@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # --- MongoDB (Course Data) ---
+  mongodb:
+    image: mongo:4.4
+    container_name: mongodb
+    restart: always
+    command: mongod --auth
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+    ports:
+      - "27017:27017"
+    volumes:
+      - /openedx/data/mongo:/data/db
+
+  # --- Redis (Caching) ---
+  redis:
+    image: redis:6.2-alpine
+    container_name: redis
+    restart: always
+    command: redis-server --requirepass password123
+    ports:
+      - "6379:6379"
+    volumes:
+      - /openedx/data/redis:/data
+
+  memcached:
+    image: memcached:alpine
+    container_name: memcached
+    restart: always
+    # -m 64 ka matlab hai 64MB RAM limit (Sessions ke liye kaafi hai)
+    command: memcached -m 64
+    ports:
+      - "11211:11211"
+
+
+  # --- Meilisearch (Added New) ---
+  meilisearch:
+    image: getmeili/meilisearch:v1.3
+    container_name: meilisearch
+    restart: always
+    ports:
+      - "7700:7700"
+    environment:
+      - MEILI_MASTER_KEY=password123
+    volumes:
+      - /openedx/data/meili:/meili_data
+
+  # --- Elasticsearch (Search Engine) ---
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.13
+    container_name: elasticsearch
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=false  # Internal VPC use only
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - /openedx/data/elasticsearch:/usr/share/elasticsearch/data
