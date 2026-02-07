@@ -1,0 +1,145 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app.kubernetes.io/component: job
+    app.kubernetes.io/name: lms-job-20260206062506
+  name: lms-job-20260206062506
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      containers:
+      - args:
+        - sh
+        - -e
+        - -c
+        - '# MFE-specific tasks
+
+          ./manage.py lms waffle_flag --list > /tmp/lms_waffle_flags.txt
+
+
+
+          ./manage.py lms populate_retirement_states
+
+
+
+
+
+          grep learner_home_mfe.enabled /tmp/lms_waffle_flags.txt || ./manage.py lms
+          waffle_flag --create --everyone learner_home_mfe.enabled
+
+
+
+
+          grep course_home.course_home_mfe_progress_tab /tmp/lms_waffle_flags.txt
+          || ./manage.py lms waffle_flag --create --everyone course_home.course_home_mfe_progress_tab
+
+          grep courseware.enable_navigation_sidebar /tmp/lms_waffle_flags.txt || ./manage.py
+          lms waffle_flag --create --everyone courseware.enable_navigation_sidebar
+
+          grep courseware.always_open_auxiliary_sidebar /tmp/lms_waffle_flags.txt
+          || ./manage.py lms waffle_flag --create --deactivate courseware.always_open_auxiliary_sidebar
+
+
+
+
+          grep discussions.enable_discussions_mfe  /tmp/lms_waffle_flags.txt || ./manage.py
+          lms waffle_flag --create --everyone discussions.enable_discussions_mfe
+
+          grep discussions.enable_learners_tab_in_discussions_mfe  /tmp/lms_waffle_flags.txt
+          || ./manage.py lms waffle_flag --create --everyone discussions.enable_learners_tab_in_discussions_mfe
+
+          grep discussions.enable_moderation_reason_codes  /tmp/lms_waffle_flags.txt
+          || ./manage.py lms waffle_flag --create --everyone discussions.enable_moderation_reason_codes
+
+          grep discussions.enable_reported_content_email_notifications  /tmp/lms_waffle_flags.txt
+          || ./manage.py lms waffle_flag --create --everyone discussions.enable_reported_content_email_notifications
+
+          grep discussions.enable_learners_stats  /tmp/lms_waffle_flags.txt || ./manage.py
+          lms waffle_flag --create --everyone discussions.enable_learners_stats
+
+          grep discussions.enable_new_structure_discussions  /tmp/lms_waffle_flags.txt
+          || ./manage.py lms waffle_flag --create --everyone discussions.enable_new_structure_discussions
+
+
+
+
+          grep openresponseassessment.enhanced_staff_grader /tmp/lms_waffle_flags.txt
+          || ./manage.py lms waffle_flag --create --everyone openresponseassessment.enhanced_staff_grader'
+        env:
+        - name: SERVICE_VARIANT
+          value: lms
+        - name: DJANGO_SETTINGS_MODULE
+          value: lms.envs.tutor.production
+        image: docker.io/overhangio/openedx:21.0.0-indigo
+        name: lms
+        volumeMounts:
+        - mountPath: /openedx/edx-platform/lms/envs/tutor/
+          name: settings-lms
+        - mountPath: /openedx/edx-platform/cms/envs/tutor/
+          name: settings-cms
+        - mountPath: /openedx/config
+          name: config
+      restartPolicy: Never
+      volumes:
+      - configMap:
+          name: openedx-settings-lms
+        name: settings-lms
+      - configMap:
+          name: openedx-settings-cms
+        name: settings-cms
+      - configMap:
+          name: openedx-config
+        name: config
+  ttlSecondsAfterFinished: 3600
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app.kubernetes.io/component: job
+  name: cms-job
+spec:
+  template:
+    spec:
+      containers:
+      - env:
+        - name: SERVICE_VARIANT
+          value: cms
+        - name: DJANGO_SETTINGS_MODULE
+          value: cms.envs.tutor.production
+        image: docker.io/overhangio/openedx:21.0.0-indigo
+        name: cms
+        volumeMounts:
+        - mountPath: /openedx/edx-platform/lms/envs/tutor/
+          name: settings-lms
+        - mountPath: /openedx/edx-platform/cms/envs/tutor/
+          name: settings-cms
+        - mountPath: /openedx/config
+          name: config
+      restartPolicy: Never
+      volumes:
+      - configMap:
+          name: openedx-settings-lms
+        name: settings-lms
+      - configMap:
+          name: openedx-settings-cms
+        name: settings-cms
+      - configMap:
+          name: openedx-config
+        name: config
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app.kubernetes.io/component: job
+  name: mysql-job
+spec:
+  template:
+    spec:
+      containers:
+      - image: docker.io/mysql:8.4.0
+        name: mysql
+      restartPolicy: Never

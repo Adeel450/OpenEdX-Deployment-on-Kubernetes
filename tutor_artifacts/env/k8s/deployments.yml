@@ -1,0 +1,328 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: caddy
+  labels:
+    app.kubernetes.io/name: caddy
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: caddy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: caddy
+    spec:
+      containers:
+        - name: caddy
+          image: docker.io/caddy:2.7.4
+          env:
+          - name: default_site_port
+            value: ":80"
+          volumeMounts:
+            - mountPath: /etc/caddy/
+              name: config
+          ports:
+            - containerPort: 80
+      volumes:
+        - name: config
+          configMap:
+            name: caddy-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cms
+  labels:
+    app.kubernetes.io/name: cms
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cms
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cms
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: cms
+          image: docker.io/overhangio/openedx:21.0.0-indigo
+          env:
+          - name: SERVICE_VARIANT
+            value: cms
+          - name: DJANGO_SETTINGS_MODULE
+            value: cms.envs.tutor.production
+          - name: UWSGI_WORKERS
+            value: "2"
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - mountPath: /openedx/edx-platform/lms/envs/tutor/
+              name: settings-lms
+            - mountPath: /openedx/edx-platform/cms/envs/tutor/
+              name: settings-cms
+            - mountPath: /openedx/config
+              name: config
+            - mountPath: /openedx/uwsgi.ini
+              name: uwsgi-config
+              subPath: uwsgi.ini
+          resources:
+            requests:
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+      volumes:
+        - name: settings-lms
+          configMap:
+            name: openedx-settings-lms
+        - name: settings-cms
+          configMap:
+            name: openedx-settings-cms
+        - name: config
+          configMap:
+            name: openedx-config
+        - name: uwsgi-config
+          configMap:
+            name: openedx-uwsgi-config
+            items:
+              - key: uwsgi.ini
+                path: uwsgi.ini
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cms-worker
+  labels:
+    app.kubernetes.io/name: cms-worker
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cms-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cms-worker
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: cms-worker
+          image: docker.io/overhangio/openedx:21.0.0-indigo
+          args:
+          
+          - "celery"
+          - "--app=cms.celery"
+          - "worker"
+          - "--loglevel=info"
+          - "--hostname=edx.cms.core.default.%h"
+          - "--queues=edx.cms.core.default,edx.cms.core.high,edx.cms.core.low"
+          - "--max-tasks-per-child=100"
+          - "--prefetch-multiplier=1"
+          - "--without-gossip"
+          - "--without-mingle"
+          env:
+          - name: SERVICE_VARIANT
+            value: cms
+          - name: DJANGO_SETTINGS_MODULE
+            value: cms.envs.tutor.production
+          volumeMounts:
+            - mountPath: /openedx/edx-platform/lms/envs/tutor/
+              name: settings-lms
+            - mountPath: /openedx/edx-platform/cms/envs/tutor/
+              name: settings-cms
+            - mountPath: /openedx/config
+              name: config
+          securityContext:
+            allowPrivilegeEscalation: false
+      volumes:
+        - name: settings-lms
+          configMap:
+            name: openedx-settings-lms
+        - name: settings-cms
+          configMap:
+            name: openedx-settings-cms
+        - name: config
+          configMap:
+            name: openedx-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lms
+  labels:
+    app.kubernetes.io/name: lms
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: lms
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: lms
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: lms
+          image: docker.io/overhangio/openedx:21.0.0-indigo
+          env:
+          - name: SERVICE_VARIANT
+            value: lms
+          - name: DJANGO_SETTINGS_MODULE
+            value: lms.envs.tutor.production
+          - name: UWSGI_WORKERS
+            value: "2"
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - mountPath: /openedx/edx-platform/lms/envs/tutor/
+              name: settings-lms
+            - mountPath: /openedx/edx-platform/cms/envs/tutor/
+              name: settings-cms
+            - mountPath: /openedx/config
+              name: config
+            - mountPath: /openedx/uwsgi.ini
+              name: uwsgi-config
+              subPath: uwsgi.ini
+          resources:
+            requests:
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+      volumes:
+        - name: settings-lms
+          configMap:
+            name: openedx-settings-lms
+        - name: settings-cms
+          configMap:
+            name: openedx-settings-cms
+        - name: config
+          configMap:
+            name: openedx-config
+        - name: uwsgi-config
+          configMap:
+            name: openedx-uwsgi-config
+            items:
+            - key: uwsgi.ini
+              path: uwsgi.ini
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lms-worker
+  labels:
+    app.kubernetes.io/name: lms-worker
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: lms-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: lms-worker
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: lms-worker
+          image: docker.io/overhangio/openedx:21.0.0-indigo
+          args: 
+          - "celery"
+          - "--app=lms.celery"
+          - "worker"
+          - "--loglevel=info"
+          - "--hostname=edx.lms.core.default.%h"
+          - "--queues=edx.lms.core.default,edx.lms.core.high,edx.lms.core.high_mem"
+          - "--max-tasks-per-child=100"
+          - "--prefetch-multiplier=1"
+          - "--without-gossip"
+          - "--without-mingle"
+          env:
+          - name: SERVICE_VARIANT
+            value: lms
+          - name: DJANGO_SETTINGS_MODULE
+            value: lms.envs.tutor.production
+          volumeMounts:
+            - mountPath: /openedx/edx-platform/lms/envs/tutor/
+              name: settings-lms
+            - mountPath: /openedx/edx-platform/cms/envs/tutor/
+              name: settings-cms
+            - mountPath: /openedx/config
+              name: config
+          securityContext:
+            allowPrivilegeEscalation: false
+      volumes:
+        - name: settings-lms
+          configMap:
+            name: openedx-settings-lms
+        - name: settings-cms
+          configMap:
+            name: openedx-settings-cms
+        - name: config
+          configMap:
+            name: openedx-config
+
+
+
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smtp
+  labels:
+    app.kubernetes.io/name: smtp
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: smtp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: smtp
+    spec:
+      securityContext:
+        runAsUser: 100
+        runAsGroup: 101
+      containers:
+        - name: smtp
+          image: docker.io/devture/exim-relay:4.96-r1-0
+          ports:
+            - containerPort: 8025
+
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mfe
+  labels:
+    app.kubernetes.io/name: mfe
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mfe
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mfe
+    spec:
+      containers:
+        - name: mfe
+          image: docker.io/overhangio/openedx-mfe:21.0.0-indigo
+          ports:
+            - containerPort: 8002
+          volumeMounts:
+            - mountPath: /etc/caddy/
+              name: config
+      volumes:
+        - name: config
+          configMap:
+            name: mfe-caddy-config
