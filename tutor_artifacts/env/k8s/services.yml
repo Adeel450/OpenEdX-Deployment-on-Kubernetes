@@ -3,21 +3,6 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: caddy
-  labels:
-    app.kubernetes.io/name: caddy
-spec:
-  type: ClusterIP
-  ports:
-    - port: 80
-      name: http
-  selector:
-    app.kubernetes.io/name: caddy
-
----
-apiVersion: v1
-kind: Service
-metadata:
   name: cms
   labels:
     app.kubernetes.io/name: cms
