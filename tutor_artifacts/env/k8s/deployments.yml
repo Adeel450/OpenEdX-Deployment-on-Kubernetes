@@ -1,35 +1,3 @@
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: caddy
-  labels:
-    app.kubernetes.io/name: caddy
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: caddy
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: caddy
-    spec:
-      containers:
-        - name: caddy
-          image: docker.io/caddy:2.7.4
-          env:
-          - name: default_site_port
-            value: ":80"
-          volumeMounts:
-            - mountPath: /etc/caddy/
-              name: config
-          ports:
-            - containerPort: 80
-      volumes:
-        - name: config
-          configMap:
-            name: caddy-config
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -114,7 +82,6 @@ spec:
         - name: cms-worker
           image: docker.io/overhangio/openedx:21.0.0-indigo
           args:
-          
           - "celery"
           - "--app=cms.celery"
           - "worker"
@@ -233,7 +200,7 @@ spec:
       containers:
         - name: lms-worker
           image: docker.io/overhangio/openedx:21.0.0-indigo
-          args: 
+          args:
           - "celery"
           - "--app=lms.celery"
           - "worker"
@@ -268,10 +235,6 @@ spec:
         - name: config
           configMap:
             name: openedx-config
-
-
-
-
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -296,8 +259,6 @@ spec:
           image: docker.io/devture/exim-relay:4.96-r1-0
           ports:
             - containerPort: 8025
-
-
 ---
 apiVersion: apps/v1
 kind: Deployment
