@@ -1,0 +1,51 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openedx-ingress
+  namespace: openedx
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  # SSL Configuration (HTTPS)
+  tls:
+  - hosts:
+    - lms.biolnks.io
+    - cms.biolnks.io
+    - apps.lms.biolnks.io
+    secretName: openedx-tls-cert
+  rules:
+  # 1. Main LMS (Student Dashboard) -> LMS Service
+  - host: lms.biolnks.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: lms
+            port:
+              number: 8000
+ 
+  # 3. CMS (Studio) -> CMS Service
+  - host: cms.biolnks.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: cms
+            port:
+              number: 8000
+  # 4. Apps (MFE - Login/Auth/Profile) -> MFE Service
+  - host: apps.lms.biolnks.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: mfe
+            port:
+              number: 8002
