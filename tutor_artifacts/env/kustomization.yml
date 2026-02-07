@@ -1,4 +1,3 @@
----
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -7,7 +6,6 @@ resources:
 - k8s/jobs.yml
 - k8s/services.yml
 - k8s/volumes.yml
-
 
 # namespace to deploy all Resources to
 namespace: openedx
@@ -24,15 +22,8 @@ commonLabels:
   app.kubernetes.io/instance: openedx-nqJaVGI5pYOquijVA9rQhPMX
   app.kubernetes.io/part-of: openedx
   app.kubernetes.io/managed-by: tutor
-  
 
 configMapGenerator:
-- name: caddy-config
-  files:
-  - apps/caddy/Caddyfile
-  options:
-    labels:
-        app.kubernetes.io/name: caddy
 - name: openedx-settings-lms
   files:
   - apps/openedx/settings/lms/__init__.py
@@ -76,4 +67,3 @@ configMapGenerator:
   options:
     labels:
         app.kubernetes.io/name: mfe
-
