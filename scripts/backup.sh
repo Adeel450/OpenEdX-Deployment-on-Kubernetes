@@ -1,58 +1,58 @@
 #!/bin/bash
 
-# ==========================================
-# OpenEdX Backup Script (RDS + Docker)
-# ==========================================
+# =========================================================
+# OpenEdX Automated Backup Script
+# Components: MySQL (RDS) + MongoDB (Docker)
+# =========================================================
 
-# 1. Configuration (Yahan apni details dalein)
-# ------------------------------------------
+# --- 1. Configuration ---
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 BACKUP_DIR="/home/ubuntu/openedx_backups/$TIMESTAMP"
 LOG_FILE="/home/ubuntu/openedx_backups/backup_log.txt"
 
-# MySQL RDS Details
-MYSQL_HOST="database-1.cluster-xxxx.us-east-1.rds.amazonaws.com" # Apna RDS Endpoint dalein
+# MySQL Details (RDS)
+MYSQL_HOST="openedx-mysql.xxxxxx.us-east-1.rds.amazonaws.com"
 MYSQL_USER="admin"
-MYSQL_PASSWORD="your_password" # Apna Password dalein
+MYSQL_PASSWORD="OpenEdXStrongPass123!"
 MYSQL_DB="openedx"
 
-# MongoDB Docker Details
-MONGO_CONTAINER_NAME="mongo" # Aapke docker ps mein naam 'mongo' ya kuch aur ho sakta hai (Check ID: 5bf275c502f5)
+# MongoDB Details (Docker)
+MONGO_CONTAINER="mongodb"  # Name of the docker container
 
-# Create Backup Directory
+# Create Directory for this session
 mkdir -p "$BACKUP_DIR"
-echo "Starting Backup at $TIMESTAMP" >> "$LOG_FILE"
 
-# ------------------------------------------
-# 2. Backup MySQL (From AWS RDS)
-# ------------------------------------------
-echo "Backing up MySQL from RDS..."
-mysqldump -h "$MYSQL_HOST" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" --single-transaction --quick --lock-tables=false "$MYSQL_DB" > "$BACKUP_DIR/mysql_openedx.sql"
+echo "[$(date)] Starting Backup Session: $TIMESTAMP" >> "$LOG_FILE"
 
-if [ $? -eq 0 ]; then
-  echo "MySQL Backup Successful" >> "$LOG_FILE"
-else
-  echo "MySQL Backup Failed" >> "$LOG_FILE"
-fi
-
-# ------------------------------------------
-# 3. Backup MongoDB (From Docker Container)
-# ------------------------------------------
-echo "Backing up MongoDB from Docker Container..."
-# Hum docker exec use kar ke container ke andar se dump stream karein gy bahar
-docker exec "$MONGO_CONTAINER_NAME" mongodump --archive --gzip > "$BACKUP_DIR/mongo_openedx.archive.gz"
+# --- 2. Backup MySQL (RDS) ---
+echo "Backing up MySQL..."
+# Uses single-transaction to ensure data consistency without locking tables
+mysqldump -h "$MYSQL_HOST" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" \
+  --single-transaction --quick --lock-tables=false "$MYSQL_DB" \
+  | gzip > "$BACKUP_DIR/mysql_openedx.sql.gz"
 
 if [ $? -eq 0 ]; then
-  echo "MongoDB Backup Successful" >> "$LOG_FILE"
+  echo "[$(date)] MySQL Backup Successful" >> "$LOG_FILE"
 else
-  echo "MongoDB Backup Failed" >> "$LOG_FILE"
+  echo "[$(date)]  MySQL Backup Failed!" >> "$LOG_FILE"
+  # Optional: Add Email Alert Logic Here
 fi
 
-# ------------------------------------------
-# 4. Optional: Upload to S3 (Production Step)
-# ------------------------------------------
-# Agar AWS CLI configured hai to ye uncomment karein:
-# aws s3 cp "$BACKUP_DIR" s3://your-backup-bucket-name/$TIMESTAMP --recursive
+# --- 3. Backup MongoDB (Docker) ---
+echo "Backing up MongoDB..."
+# Execs into container and streams archive to host
+docker exec "$MONGO_CONTAINER" mongodump --archive --gzip > "$BACKUP_DIR/mongo_openedx.archive.gz"
 
-echo "Backup Completed! Files saved in $BACKUP_DIR"
-echo "---------------------------------------------" >> "$LOG_FILE"
+if [ $? -eq 0 ]; then
+  echo "[$(date)]  MongoDB Backup Successful" >> "$LOG_FILE"
+else
+  echo "[$(date)]  MongoDB Backup Failed!" >> "$LOG_FILE"
+fi
+
+# --- 4. Cleanup (Retention Policy) ---
+# Delete backups older than 7 days to save space
+find /home/ubuntu/openedx_backups/* -type d -mtime +7 -exec rm -rf {} +
+echo "[$(date)] Cleanup of old backups completed." >> "$LOG_FILE"
+
+echo "[$(date)] 🏁 Backup Session Completed." >> "$LOG_FILE"
+echo "---------------------------------------------------" >> "$LOG_FILE"
