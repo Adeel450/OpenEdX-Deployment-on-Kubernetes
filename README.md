@@ -6,7 +6,7 @@ The solution follows enterprise best practices, including externalized databases
 
 🏗️ Architecture Overview
 
-The platform is deployed inside a custom AWS VPC spanning two Availability Zones (us-east-1a, us-east-1b) for high availability.
+The platform is deployed inside a custom AWS VPC spanning two Availability Zones (us-east-1a, us-east-1b) to ensure high availability and fault tolerance.
 
 Key Components
 
@@ -16,7 +16,7 @@ Ingress Layer: Nginx Ingress Controller (ALB-backed)
 
 Edge Security: AWS CloudFront + AWS WAF
 
-Compute:
+Compute Layer:
 
 EKS Worker Nodes (Private Subnets)
 
@@ -61,7 +61,7 @@ Ensure the following tools are installed on the Bastion Host:
 
 AWS CLI v2 (configured with admin access)
 
-kubectl (EKS compatible)
+kubectl (compatible with EKS)
 
 Terraform v1.0+
 
@@ -72,7 +72,7 @@ Helm
 🚀 Quick Start (Bastion Host Workflow)
 
 ⚠️ Infrastructure provisioning (VPC, EKS, RDS) must be completed first using Terraform.
-Refer to documentation/DEPLOYMENT_GUIDE.md.
+Refer to: documentation/DEPLOYMENT_GUIDE.md
 
 Step 1: Connect to AWS & EKS Cluster
 Configure AWS Credentials
@@ -87,7 +87,7 @@ Verify Cluster Access
 kubectl get nodes
 
 
-✅ Expected: Worker nodes in Ready state
+✅ Expected output: Worker nodes in Ready state
 
 Step 2: Install & Configure Tutor
 Create and Activate Virtual Environment
@@ -101,17 +101,17 @@ Run Interactive Configuration
 tutor config save --interactive
 
 
-📌 Select:
+📌 Configuration choices:
 
 Production: yes
 
-SSL: no (Handled by ALB / CloudFront)
+SSL: no (handled by ALB / CloudFront)
 
 Step 3: Configure External Databases
-Edit Tutor Configuration
+Edit Tutor Configuration File
 nano "$(tutor config printroot)/config.yml"
 
-Append External Database Configuration
+Add External Database Configuration
 # --- External Databases Configuration ---
 
 RUN_MYSQL: false
@@ -135,7 +135,7 @@ ELASTICSEARCH_HOST: "10.0.5.90"
 ELASTICSEARCH_PORT: 9200
 ELASTICSEARCH_SCHEME: "http"
 
-Save & Regenerate Manifests
+Save Configuration & Regenerate Manifests
 tutor config save
 
 Step 4: Deploy OpenEdX on Kubernetes
@@ -143,10 +143,10 @@ Run Initial Database Migrations
 tutor k8s run lms ./manage.py lms migrate
 tutor k8s run cms ./manage.py cms migrate
 
-Launch Platform
+Launch OpenEdX Platform
 tutor k8s launch
 
-Monitor Pods
+Monitor Pod Status
 kubectl get pods -n openedx -w
 
 Step 5: Enable Monitoring (Prometheus & Grafana)
@@ -160,7 +160,7 @@ helm install monitoring prometheus-community/kube-prometheus-stack \
   --create-namespace \
   --set grafana.service.type=LoadBalancer
 
-Verify Deployment
+Verify Monitoring Pods
 kubectl get pods -n monitoring
 
 Step 6: Expose Ingress Controller
@@ -183,11 +183,11 @@ Backups: Daily automated backups at 02:00 UTC
 Manual Backup
 ./scripts/backup.sh
 
-Restore
+Restore Backup
 ./scripts/restore.sh <TIMESTAMP>
 
 
-📘 See documentation/TROUBLESHOOTING.md for known issues.
+📘 Refer to documentation/TROUBLESHOOTING.md for common issues and fixes.
 
 📞 Contact
 
