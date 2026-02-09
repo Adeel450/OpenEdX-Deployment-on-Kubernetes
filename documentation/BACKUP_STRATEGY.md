@@ -28,7 +28,7 @@ Before automating the backups, the following dependencies must be installed on t
 
 The server requires clients to communicate with RDS and Docker. Run the following commands to update the system and install the MySQL client.
 
-```bash
+
 # Update System
 sudo apt update
 
@@ -40,7 +40,7 @@ docker --version
 2.2 Directory Structure
 We organize backups by timestamps to prevent overwriting. Create the main backup directory:
 
-Bash
+
 # Create the main backup directory
 mkdir -p /home/ubuntu/openedx_backups
 3. Implementation: Backup Script
@@ -64,7 +64,7 @@ Syncs data to AWS S3 (Optional).
 
 Deployment: Copy the script to the server and make it executable:
 
-Bash
+
 cp scripts/backup.sh /home/ubuntu/backup.sh
 chmod +x /home/ubuntu/backup.sh
 4. Implementation: Restore Script
@@ -74,7 +74,7 @@ Source File Path: scripts/restore.sh
 
 Usage:
 
-Bash
+
 ./restore.sh <TIMESTAMP_FOLDER_NAME>
 # Example: ./restore.sh 20260209_120000
 Functionality:
@@ -89,7 +89,7 @@ Restores MongoDB to the Docker container (Drops existing collections before rest
 
 Deployment: Copy the script to the server and make it executable:
 
-Bash
+
 cp scripts/restore.sh /home/ubuntu/restore.sh
 chmod +x /home/ubuntu/restore.sh
 5. Automation (Cronjob)
@@ -101,11 +101,11 @@ Setup Instructions:
 
 Open the crontab editor on the Utility Server:
 
-Bash
+
 crontab -e
 Append the following line to schedule the script and log output:
 
-Bash
+
 0 2 * * * /bin/bash /home/ubuntu/backup.sh >> /home/ubuntu/openedx_backups/cron.log 2>&1
 6. Offsite Storage (AWS S3)
 To protect against total server failure (EC2 termination), backups are synced to AWS S3.
@@ -118,13 +118,13 @@ Configure AWS CLI: aws configure.
 
 Sync Logic: The backup.sh script includes the following command to mirror local backups to S3:
 
-Bash
+
 aws s3 sync /home/ubuntu/openedx_backups s3://my-openedx-backups-bucket/ --delete
 7. Monitoring & Verification
 7.1 Log Monitoring
 The backup process writes detailed logs. Administrators can monitor the status using:
 
-Bash
+
 # View live logs
 tail -f /home/ubuntu/openedx_backups/backup_log.txt
 7.2 Disaster Recovery Drill (Test)
@@ -134,7 +134,7 @@ It is recommended to perform a "Dry Run" restoration once a month to ensure data
 
 2. Verify Integrity: Check if the compressed backup file is valid:
 
-Bash
+
 # Check if gzip file is valid
 gzip -t /home/ubuntu/openedx_backups/<TIMESTAMP>/mysql_openedx.sql.gz
 3. Test Restore: Use restore.sh on a Staging/Test Environment first. Never run this directly on Production unless absolutely necessary.
