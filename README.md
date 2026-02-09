@@ -1,4 +1,4 @@
-#  OpenEdX Production Deployment on AWS EKS
+# 🚀 OpenEdX Production Deployment on AWS EKS
 
 **Technical Assessment Submission for Al Nafi DevOps Department**
 
@@ -109,12 +109,14 @@ kubectl get pods -n openedx -w
 
 CompletedComprehensive markdown guides included
 
-Security & Maintenance
+🛡️Security & Maintenance
 Access Control: All worker nodes and databases reside in Private Subnets. Access is restricted to the Bastion Host via SSH Agent Forwarding.
 Backups: Database backups run daily at 02:00 UTC.
 Manual Trigger: ./scripts/backup.sh
 Restore: ./scripts/restore.sh <TIMESTAMP>
 Troubleshooting: Refer to TROUBLESHOOTING.md for common issues and fixes.
 
- ContactSubmitted by: Muhammad Adeel MunirRole: DevOps EngineerEmail: adeel.zixer11@gmail.com
+📞 Contact
+Submitted by: Muhammad Adeel Munir Role: DevOps Engineer Email: adeel.zixer11@gmail.com
+
 
