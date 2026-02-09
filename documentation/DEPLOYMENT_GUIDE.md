@@ -276,7 +276,9 @@ nano "$(tutor config printroot)/config.yml"
 (Append the external database configuration block referencing your RDS Endpoint and Utility Server IP).
 
 6.4 Launch Deployment
+
 tutor config save
+
 tutor k8s launch
 
 Deployment Complete! The OpenEdX platform is now running on AWS EKS with a highly available, secure, and scalable architecture.
