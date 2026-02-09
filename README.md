@@ -1,6 +1,5 @@
 # 🚀 OpenEdX Production Deployment on AWS EKS
 
-
 This repository contains the complete Infrastructure-as-Code (IaC), Kubernetes manifests, and automation scripts required to deploy a production-grade, highly available **OpenEdX Learning Management System (LMS)** on **AWS Elastic Kubernetes Service (EKS)**.
 
 The solution is architected to meet enterprise standards, featuring **External Databases**, **Nginx Ingress**, **AWS WAF/CloudFront integration**, and **Automated Disaster Recovery**.
@@ -172,13 +171,15 @@ Ensure the Ingress Controller is exposed via a public AWS Load Balancer.
 
 1. Patch Service Type:
 
-                   
+
 kubectl patch svc -n ingress-nginx ingress-nginx-controller \
   -p '{"spec": {"type": "LoadBalancer"}}'
 2. Get External URL: Retrieve the URL to access your LMS.
 
- 
+
 kubectl get svc -n ingress-nginx ingress-nginx-controller
+
+
 
 🛡️ Security & Maintenance
 Access Control: All worker nodes and databases reside in Private Subnets. Access is restricted to the Bastion Host via SSH Agent Forwarding.
@@ -193,4 +194,3 @@ Troubleshooting: Refer to TROUBLESHOOTING.md for common issues and fixes.
 
 📞 Contact
 Submitted by: Muhammad Adeel Munir Role: DevOps Engineer Email: adeel.zixer11@gmail.com
-
