@@ -281,4 +281,45 @@ tutor config save
 
 tutor k8s launch
 
+
+## Step 7: Post-Deployment Configuration (Monitoring & Ingress)
+
+Once the core platform is running, we enable the monitoring stack and finalize the Ingress configuration to expose the platform via an AWS Application Load Balancer (ALB).
+
+### 7.1 Enable Monitoring (Prometheus & Grafana)
+
+We use the official Helm charts to deploy a lightweight monitoring stack specifically for the EKS cluster.
+
+**1. Add Helm Repositories:**
+```bash
+helm repo add prometheus-community [https://prometheus-community.github.io/helm-charts](https://prometheus-community.github.io/helm-charts)
+helm repo update
+
+2. Install Prometheus & Grafana Stack:
+
+Bash
+helm install monitoring prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --create-namespace \
+  --set grafana.service.type=LoadBalancer
+3. Verify Installation:
+
+Bash
+kubectl get pods -n monitoring
+# Wait until all pods are in 'Running' state.
+7.2 Finalize Ingress Controller (Public Access)
+By default, the Nginx Ingress Controller might not assign an external address immediately. We patch the service to ensure it provisions a public Load Balancer.
+
+1. Patch Ingress Service:
+
+Bash
+kubectl patch svc -n ingress-nginx ingress-nginx-controller \
+  -p '{"spec": {"type": "LoadBalancer"}}'
+2. Get Load Balancer URL: Run the following command to retrieve the DNS name of your Load Balancer. This is the URL you will point your domain (Route53) to.
+
+Bash
+kubectl get svc -n ingress-nginx ingress-nginx-controller
+Copy the EXTERNAL-IP (e.g., a4d...us-east-1.elb.amazonaws.com).
+
+
 Deployment Complete! The OpenEdX platform is now running on AWS EKS with a highly available, secure, and scalable architecture.
