@@ -304,12 +304,14 @@ Record backup retention policy and test restores routinely.
 ---
 
 ---
-📺 Architecture Overview Video
+**📺 Architecture Overview Video**
 
 A visual walkthrough of the OpenEdX + AWS EKS architecture design is available here:
 
-🔗 Architecture Video (Google Drive):
+**🔗 Architecture Video (Google Drive):**
+
 https://drive.google.com/file/d/1nfYCW3ljfHrNblmQhkmN2aozUnroZJfK/view?usp=sharing
 
 ---
+
 
