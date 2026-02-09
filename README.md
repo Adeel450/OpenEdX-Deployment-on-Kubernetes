@@ -1,108 +1,119 @@
-# 🚀 OpenEdX Production Deployment on AWS EKS
+🚀 OpenEdX Production Deployment on AWS EKS
 
-This repository contains the complete Infrastructure-as-Code (IaC), Kubernetes manifests, and automation scripts required to deploy a production-grade, highly available **OpenEdX Learning Management System (LMS)** on **AWS Elastic Kubernetes Service (EKS)**.
+This repository provides a production-grade, highly available OpenEdX LMS deployment on AWS EKS, built using Infrastructure as Code (Terraform) and Kubernetes-native tooling.
 
-The solution is architected to meet enterprise standards, featuring **External Databases**, **Nginx Ingress**, **AWS WAF/CloudFront integration**, and **Automated Disaster Recovery**.
+The solution follows enterprise best practices, including externalized databases, secure networking, monitoring, backups, and disaster recovery.
 
----
+🏗️ Architecture Overview
 
-## 🏗️ Architecture Overview
+The platform is deployed inside a custom AWS VPC spanning two Availability Zones (us-east-1a, us-east-1b) for high availability.
 
-The platform is built on a **Custom VPC** network designed for security and high availability across two Availability Zones (`us-east-1a`, `us-east-1b`).
+Key Components
 
-* **Orchestration:** AWS EKS (Kubernetes 1.30+)
-* **Web Layer:** Nginx Ingress Controller (Replacing Caddy) behind AWS Application Load Balancer (ALB).
-* **Edge Security:** AWS WAF + Amazon CloudFront (CDN).
-* **Compute Layer:**
-    * **Application:** EKS Worker Nodes (Private Subnets).
-    * **Management:** Bastion Host (Public Subnet) for secure administrative access.
-* **Data Layer (Externalized):**
-    * **MySQL:** AWS RDS (Multi-AZ).
-    * **NoSQL (Mongo, Redis, Elastic):** Dedicated Utility Server (Private EC2) managed via Docker.
-* **Storage:** AWS EBS (gp3) via Persistent Volume Claims (PVC).
+Container Orchestration: AWS EKS (Kubernetes 1.30+)
 
-![Architecture Diagram](diagrams/architecture-diagram.png)
+Ingress Layer: Nginx Ingress Controller (ALB-backed)
 
----
+Edge Security: AWS CloudFront + AWS WAF
 
-## 📂 Repository Structure
+Compute:
 
-```text
+EKS Worker Nodes (Private Subnets)
+
+Bastion Host (Public Subnet)
+
+Data Layer (Externalized):
+
+MySQL: Amazon RDS (Multi-AZ)
+
+MongoDB, Redis, Elasticsearch: Utility EC2 (Dockerized)
+
+Storage: Amazon EBS (gp3) via PVCs
+
+Monitoring: Prometheus & Grafana
+
+📌 All application workloads and databases run in private subnets.
+
+📂 Repository Structure
 .
-├── README.md                      # Project Overview & Quick Start
-├── diagrams/                      # Architecture & Network Diagrams
-├── documentation/                 # Detailed Operational Guides
-│   ├── DEPLOYMENT_GUIDE.md        # Step-by-Step Installation Manual
-│   ├── TROUBLESHOOTING.md         # Issue Resolution Log
-│   └── BACKUP_STRATEGY.md         # DR & Backup Policies
-├── k8s-manifests/                 # Kubernetes YAML Configurations
-│   ├── ingress/                   # Nginx Ingress & Certs
-│   ├── monitoring/                # Prometheus/Grafana Stack
-│   └── tutor-manifest/            # OpenEdX K8s Resources
-├── scripts/                       # Automation Scripts
-│   ├── backup.sh                  # Database Backup Script
-│   └── restore.sh                 # Database Restoration Script
-├── terraform/                     # Infrastructure as Code
-│   ├── vpc/                       # Network Layer (VPC, Subnets, IGW, NAT)
-│   ├── eks/                       # EKS Cluster & Node Groups
-│   └── databases/                 # RDS & Utility Server
-└── screenshots/                   # Proof of Implementation
+├── README.md
+├── diagrams/
+├── documentation/
+│   ├── DEPLOYMENT_GUIDE.md
+│   ├── TROUBLESHOOTING.md
+│   └── BACKUP_STRATEGY.md
+├── k8s-manifests/
+│   ├── ingress/
+│   ├── monitoring/
+│   └── tutor-manifest/
+├── scripts/
+│   ├── backup.sh
+│   └── restore.sh
+├── terraform/
+│   ├── vpc/
+│   ├── eks/
+│   └── databases/
+└── screenshots/
+
 🛠️ Prerequisites
-To deploy this infrastructure, ensure the following tools are installed on your deployment station (Bastion Host):
 
-AWS CLI v2 (Configured with Administrator Access)
+Ensure the following tools are installed on the Bastion Host:
 
-Kubectl (Compatible with EKS version)
+AWS CLI v2 (configured with admin access)
 
-Terraform (v1.0+)
+kubectl (EKS compatible)
+
+Terraform v1.0+
 
 Tutor (OpenEdX Manager)
 
-Helm (For Ingress/Monitoring)
+Helm
 
-🚀 Quick Start Guide (Bastion Host Workflow)
-Follow these commands on your Bastion Host to configure the cluster and launch the platform. For infrastructure provisioning steps (VPC/RDS/EKS creation), refer to the Deployment Guide.
+🚀 Quick Start (Bastion Host Workflow)
+
+⚠️ Infrastructure provisioning (VPC, EKS, RDS) must be completed first using Terraform.
+Refer to documentation/DEPLOYMENT_GUIDE.md.
 
 Step 1: Connect to AWS & EKS Cluster
-Authenticate your session and generate the kubeconfig file to communicate with the cluster.
-
-1. Configure AWS Credentials:
-
+Configure AWS Credentials
 aws configure
-# Enter Access Key ID, Secret Key, Region (us-east-1), Output (json)
-2. Update Kubeconfig:
 
-aws eks update-kubeconfig --region us-east-1 --name openedx-cluster
-3. Verify Connection:
+Update kubeconfig
+aws eks update-kubeconfig \
+  --region us-east-1 \
+  --name openedx-cluster
 
+Verify Cluster Access
 kubectl get nodes
-# Expected Output: List of worker nodes in 'Ready' state
+
+
+✅ Expected: Worker nodes in Ready state
 
 Step 2: Install & Configure Tutor
-Set up the OpenEdX manager in a virtual environment to isolate dependencies.
-
-1. Create & Activate Virtual Env:
-
+Create and Activate Virtual Environment
 python3 -m venv venv
 source venv/bin/activate
-2. Install Tutor (Full Release):
 
+Install Tutor
 pip install "tutor[full]"
 
-3. Interactive Configuration: Run the configuration wizard. Ensure you select "y" for production and "n" for SSL (since ALB handles SSL).
-
+Run Interactive Configuration
 tutor config save --interactive
 
-Step 3: Connect External Databases
-Override the default Kubernetes database configuration to point to AWS RDS and the Utility Server.
-1. Open Configuration File:
 
+📌 Select:
+
+Production: yes
+
+SSL: no (Handled by ALB / CloudFront)
+
+Step 3: Configure External Databases
+Edit Tutor Configuration
 nano "$(tutor config printroot)/config.yml"
 
-2. Append Configuration: Copy and paste the following block at the end of the file. Replace placeholders with your actual endpoints.
-
-YAML
+Append External Database Configuration
 # --- External Databases Configuration ---
+
 RUN_MYSQL: false
 MYSQL_HOST: "openedx-mysql.xxxxxx.us-east-1.rds.amazonaws.com"
 MYSQL_PORT: 3306
@@ -111,7 +122,7 @@ MYSQL_PASSWORD: "YourStrongPassword!"
 MYSQL_DATABASE: "openedx"
 
 RUN_MONGODB: false
-MONGODB_HOST: "10.0.5.90"  # Private IP of Utility Server
+MONGODB_HOST: "10.0.5.90"
 MONGODB_PORT: 27017
 MONGODB_DATABASE: "openedx"
 
@@ -124,65 +135,62 @@ ELASTICSEARCH_HOST: "10.0.5.90"
 ELASTICSEARCH_PORT: 9200
 ELASTICSEARCH_SCHEME: "http"
 
-3. Save Changes and Regenerate Manifests:
-
+Save & Regenerate Manifests
 tutor config save
-Step 4: Deploy Platform to Kubernetes
-Launch the application pods, services, and ingress rules.
 
-1. Initialize Database Migrations: Run this once to create the initial database tables.
-
+Step 4: Deploy OpenEdX on Kubernetes
+Run Initial Database Migrations
 tutor k8s run lms ./manage.py lms migrate
 tutor k8s run cms ./manage.py cms migrate
-2. Launch OpenEdX Platform: Deploy all Kubernetes resources.
 
-
+Launch Platform
 tutor k8s launch
-3. Monitor Deployment Status: Watch the pods until they reach the Running state.
 
-
+Monitor Pods
 kubectl get pods -n openedx -w
 
 Step 5: Enable Monitoring (Prometheus & Grafana)
-Deploy the monitoring stack to observe cluster health and performance.
-
-1. Add Helm Repositories:
-
-helm repo add prometheus-community [https://prometheus-community.github.io/helm-charts](https://prometheus-community.github.io/helm-charts)
+Add Helm Repository
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
-2. Install Stack:
 
+Install Monitoring Stack
 helm install monitoring prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
   --set grafana.service.type=LoadBalancer
 
-3. Verify Installation:
-
+Verify Deployment
 kubectl get pods -n monitoring
-Step 6: Finalize Ingress (Load Balancer)
-Ensure the Ingress Controller is exposed via a public AWS Load Balancer.
 
-1. Patch Service Type:
+Step 6: Expose Ingress Controller
+Patch Ingress Service
+kubectl patch svc ingress-nginx-controller \
+  -n ingress-nginx \
+  -p '{"spec":{"type":"LoadBalancer"}}'
 
-kubectl patch svc -n ingress-nginx ingress-nginx-controller \
-  -p '{"spec": {"type": "LoadBalancer"}}'
-2. Get External URL: Retrieve the URL to access your LMS.
-
-kubectl get svc -n ingress-nginx ingress-nginx-controller
-
+Get External Endpoint
+kubectl get svc -n ingress-nginx
 
 🛡️ Security & Maintenance
-Access Control: All worker nodes and databases reside in Private Subnets. Access is restricted to the Bastion Host via SSH Agent Forwarding.
 
-Backups: Database backups run daily at 02:00 UTC.
+Network Isolation: All workloads run in private subnets
 
-Manual Trigger: ./scripts/backup.sh
+Access Control: Bastion Host with SSH agent forwarding
 
-Restore: ./scripts/restore.sh <TIMESTAMP>
+Backups: Daily automated backups at 02:00 UTC
 
-Troubleshooting: Refer to TROUBLESHOOTING.md for common issues and fixes.
+Manual Backup
+./scripts/backup.sh
+
+Restore
+./scripts/restore.sh <TIMESTAMP>
+
+
+📘 See documentation/TROUBLESHOOTING.md for known issues.
 
 📞 Contact
-Submitted by: Muhammad Adeel Munir Role: DevOps Engineer Email: adeel.zixer11@gmail.com
 
+Submitted by: Muhammad Adeel Munir
+Role: DevOps Engineer
+Email: adeel.zixer11@gmail.com
