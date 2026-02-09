@@ -1,4 +1,4 @@
-# 🚀 OpenEdX Production Deployment on AWS EKS
+#  OpenEdX Production Deployment on AWS EKS
 
 **Technical Assessment Submission for Al Nafi DevOps Department**
 
@@ -8,7 +8,7 @@ The solution is architected to meet enterprise standards, featuring **External D
 
 ---
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 The platform is built on a **Custom VPC** network designed for security and high availability across two Availability Zones (`us-east-1a`, `us-east-1b`).
 
@@ -27,7 +27,7 @@ The platform is built on a **Custom VPC** network designed for security and high
 
 ---
 
-## 📂 Repository Structure
+## Repository Structure
 
 ```text
 .
@@ -49,7 +49,7 @@ The platform is built on a **Custom VPC** network designed for security and high
 │   ├── eks/                       # EKS Cluster & Node Groups
 │   └── databases/                 # RDS & Utility Server
 └── screenshots/                   # Proof of Implementation
-🛠️ PrerequisitesTo deploy this infrastructure, ensure the following tools are installed on your deployment station (Bastion Host):AWS CLI v2 (Configured with Administrator Access)Kubectl (Compatible with EKS version)Terraform (v1.0+)Tutor (OpenEdX Manager)Helm (For Ingress/Monitoring)🚀 Quick Start Guide (Bastion Host Workflow)Follow these commands on your Bastion Host to configure the cluster and launch the platform. For infrastructure provisioning steps (VPC/RDS/EKS creation), refer to the Deployment Guide.Step 1: Connect to AWS & EKS ClusterAuthenticate your session and generate the kubeconfig file to communicate with the cluster.Bash# 1. Configure AWS Credentials
+ PrerequisitesTo deploy this infrastructure, ensure the following tools are installed on your deployment station (Bastion Host):AWS CLI v2 (Configured with Administrator Access)Kubectl (Compatible with EKS version)Terraform (v1.0+)Tutor (OpenEdX Manager)Helm (For Ingress/Monitoring) Quick Start Guide (Bastion Host Workflow)Follow these commands on your Bastion Host to configure the cluster and launch the platform. For infrastructure provisioning steps (VPC/RDS/EKS creation), refer to the Deployment Guide.Step 1: Connect to AWS & EKS ClusterAuthenticate your session and generate the kubeconfig file to communicate with the cluster.Bash# 1. Configure AWS Credentials
 aws configure
 # Enter Access Key ID, Secret Key, Region (us-east-1), Output (json)
 
@@ -106,4 +106,15 @@ tutor k8s launch
 # 3. Monitor Deployment Status
 kubectl get pods -n openedx -w
 # Wait until all pods are 'Running'
-✅ Key Deliverables & Features ImplementedRequirementImplementation StatusMethodAWS EKS Deployment✅ CompletedCustom VPC, Private Node GroupsExternal Databases✅ CompletedAWS RDS (MySQL) + EC2 Utility NodeReplace Caddy with Nginx✅ CompletedCustom Ingress Controller configurationAWS WAF & CloudFront✅ CompletedIntegrated at edge layerAuto-Scaling (HPA)✅ CompletedHPA configured for LMS/CMSBackup & Restore✅ CompletedAutomated Shell Scripts + CronjobMonitoring✅ CompletedPrometheus & Grafana Helm ChartsDocumentation✅ CompletedComprehensive markdown guides included🛡️ Security & MaintenanceAccess Control: All worker nodes and databases reside in Private Subnets. Access is restricted to the Bastion Host via SSH Agent Forwarding.Backups: Database backups run daily at 02:00 UTC.Manual Trigger: ./scripts/backup.shRestore: ./scripts/restore.sh <TIMESTAMP>Troubleshooting: Refer to TROUBLESHOOTING.md for common issues and fixes.📞 ContactSubmitted by: Muhammad Adeel MunirRole: DevOps EngineerEmail: adeel.zixer11@gmail.com
+
+CompletedComprehensive markdown guides included
+
+Security & Maintenance
+Access Control: All worker nodes and databases reside in Private Subnets. Access is restricted to the Bastion Host via SSH Agent Forwarding.
+Backups: Database backups run daily at 02:00 UTC.
+Manual Trigger: ./scripts/backup.sh
+Restore: ./scripts/restore.sh <TIMESTAMP>
+Troubleshooting: Refer to TROUBLESHOOTING.md for common issues and fixes.
+
+ ContactSubmitted by: Muhammad Adeel MunirRole: DevOps EngineerEmail: adeel.zixer11@gmail.com
+
