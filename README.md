@@ -303,4 +303,5 @@ Record backup retention policy and test restores routinely.
 
 ---
 
-*This README is optimized for clarity and for direct inclusion into the project root (`README.md`). If you want, I can also provide a short GitHub "About" blurb, a resume-friendly project bullet, or a one-page architecture explanation for reviewers.*
+
+
