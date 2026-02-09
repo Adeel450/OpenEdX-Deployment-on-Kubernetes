@@ -65,6 +65,7 @@ Deployment: Copy the script to the server:
 
 cp scripts/backup.sh /home/ubuntu/backup.sh
 chmod +x /home/ubuntu/backup.sh
+
 4. Implementation: Restore Script
 This script is used to restore data from a specific backup folder in case of data corruption or disaster recovery.
 
@@ -90,6 +91,7 @@ Deployment: Copy the script to the server:
 
 cp scripts/restore.sh /home/ubuntu/restore.sh
 chmod +x /home/ubuntu/restore.sh
+
 5. Automation (Cronjob)
 We utilize the Linux cron daemon to ensure backups happen automatically without human intervention.
 
