@@ -68,41 +68,37 @@ Authenticate your session and generate the kubeconfig file to communicate with t
 
 1. Configure AWS Credentials:
 
-
 aws configure
 # Enter Access Key ID, Secret Key, Region (us-east-1), Output (json)
 2. Update Kubeconfig:
 
-
 aws eks update-kubeconfig --region us-east-1 --name openedx-cluster
 3. Verify Connection:
 
-
 kubectl get nodes
 # Expected Output: List of worker nodes in 'Ready' state
+
 Step 2: Install & Configure Tutor
 Set up the OpenEdX manager in a virtual environment to isolate dependencies.
 
 1. Create & Activate Virtual Env:
 
-
 python3 -m venv venv
 source venv/bin/activate
 2. Install Tutor (Full Release):
 
-
 pip install "tutor[full]"
+
 3. Interactive Configuration: Run the configuration wizard. Ensure you select "y" for production and "n" for SSL (since ALB handles SSL).
 
-
 tutor config save --interactive
+
 Step 3: Connect External Databases
 Override the default Kubernetes database configuration to point to AWS RDS and the Utility Server.
-
 1. Open Configuration File:
 
-
 nano "$(tutor config printroot)/config.yml"
+
 2. Append Configuration: Copy and paste the following block at the end of the file. Replace placeholders with your actual endpoints.
 
 YAML
@@ -127,15 +123,14 @@ RUN_ELASTICSEARCH: false
 ELASTICSEARCH_HOST: "10.0.5.90"
 ELASTICSEARCH_PORT: 9200
 ELASTICSEARCH_SCHEME: "http"
-3. Save Changes and Regenerate Manifests:
 
+3. Save Changes and Regenerate Manifests:
 
 tutor config save
 Step 4: Deploy Platform to Kubernetes
 Launch the application pods, services, and ingress rules.
 
 1. Initialize Database Migrations: Run this once to create the initial database tables.
-
 
 tutor k8s run lms ./manage.py lms migrate
 tutor k8s run cms ./manage.py cms migrate
@@ -147,23 +142,22 @@ tutor k8s launch
 
 
 kubectl get pods -n openedx -w
+
 Step 5: Enable Monitoring (Prometheus & Grafana)
 Deploy the monitoring stack to observe cluster health and performance.
 
 1. Add Helm Repositories:
 
-
 helm repo add prometheus-community [https://prometheus-community.github.io/helm-charts](https://prometheus-community.github.io/helm-charts)
 helm repo update
 2. Install Stack:
-
 
 helm install monitoring prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
   --set grafana.service.type=LoadBalancer
-3. Verify Installation:
 
+3. Verify Installation:
 
 kubectl get pods -n monitoring
 Step 6: Finalize Ingress (Load Balancer)
@@ -171,14 +165,11 @@ Ensure the Ingress Controller is exposed via a public AWS Load Balancer.
 
 1. Patch Service Type:
 
-
 kubectl patch svc -n ingress-nginx ingress-nginx-controller \
   -p '{"spec": {"type": "LoadBalancer"}}'
 2. Get External URL: Retrieve the URL to access your LMS.
 
-
 kubectl get svc -n ingress-nginx ingress-nginx-controller
-
 
 
 🛡️ Security & Maintenance
@@ -194,3 +185,4 @@ Troubleshooting: Refer to TROUBLESHOOTING.md for common issues and fixes.
 
 📞 Contact
 Submitted by: Muhammad Adeel Munir Role: DevOps Engineer Email: adeel.zixer11@gmail.com
+
