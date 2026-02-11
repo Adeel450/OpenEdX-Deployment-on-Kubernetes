@@ -52,7 +52,7 @@ Alternatively, provision the network using the provided Terraform script.
 
 **Deployment Command:**
 
-
+```bash
 cd terraform/vpc
 terraform init
 terraform apply -auto-approve
@@ -79,7 +79,7 @@ Inbound Rules: Allow 10.0.0.0/16 (VPC CIDR) on ports:
 2.2 Create DB Subnet Group
 Go to RDS > Subnet groups > Create DB subnet group.
 
-Name: openedx-db-subnet-group.
+Name: openedx-db-subnet-group
 
 Subnets: Select ONLY the two Private Data Subnets (10.0.5.0/24, 10.0.6.0/24).
 
@@ -88,15 +88,13 @@ Go to RDS > Create database > Standard create > MySQL.
 
 Version: MySQL 8.0.x.
 
-Template: Dev/Test (or Free Tier).
-
 Settings:
 
 Identifier: openedx-mysql
 
 Master Username: admin (Save your password!)
 
-Instance: db.t3.medium (or micro for testing).
+Instance: db.t3.medium
 
 Connectivity:
 
@@ -108,12 +106,12 @@ Public Access: NO
 
 Security Group: Select openedx-data-sg.
 
-Additional Config: Initial database name: openedx.
-
 2.4 Option B: Setup via Terraform
 Source Code: terraform/databases/mysql.tf
 
+Deployment Command:
 
+Bash
 cd terraform/databases
 terraform init
 terraform apply -auto-approve
@@ -137,8 +135,6 @@ Public IP: Disable.
 
 Security Group: openedx-utility-sg (Allow traffic from 10.0.0.0/16).
 
-Storage: 20 GiB.
-
 3.2 Launch Bastion Host (Public)
 Name: openedx-bastion
 
@@ -155,7 +151,9 @@ Security Group: openedx-bastion-sg (Allow SSH from My IP).
 3.3 Option B: Setup via Terraform
 Source Code: terraform/databases/utility.tf
 
+Deployment Command:
 
+Bash
 cd terraform/databases
 terraform init
 terraform apply -auto-approve
@@ -163,30 +161,28 @@ Step 4: NoSQL Database Setup (Docker)
 We install MongoDB, Redis, and Elasticsearch on the private Utility Server.
 
 4.1 Secure Access via SSH Agent Forwarding
-Since the Utility server has no Public IP, connect via the Bastion:
+Since the Utility server has no Public IP, connect via the Bastion.
 
-Local Machine: Load your key.
+1. Load your key (Local Machine):
 
+Bash
 ssh-add adeel-key.pem
-Connect to Bastion:
+2. Connect to Bastion:
 
-
+Bash
 ssh -A ubuntu@<BASTION-PUBLIC-IP>
-Jump to Utility Server:
+3. Jump to Utility Server:
 
 Bash
 ssh ubuntu@10.0.5.90  # Replace with Utility Server Private IP
-4.2 Network Fix (Temporary)
-To allow the Utility Server to download Docker, update the Private Data Route Table to route 0.0.0.0/0 to the NAT Gateway. (Revert this after installation for maximum security).
+4.2 Install Docker Engine
+Run on Utility Server (Ensure NAT Gateway is active):
 
-4.3 Install Docker Engine
-Run on Utility Server:
-
-
+Bash
 sudo apt update
 sudo apt install -y docker.io docker-compose-v2
 sudo usermod -aG docker $USER
-4.4 Configure System & Storage
+4.3 Configure System & Storage
 Bash
 # Create Persistent Directories
 sudo mkdir -p /openedx/data/{mongo,redis,elasticsearch}
@@ -195,49 +191,32 @@ sudo chmod -R 777 /openedx/data
 # Increase Memory Map Limit for Elasticsearch
 sudo sysctl -w vm.max_map_count=262144
 echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
-4.5 Deploy Databases
+4.4 Deploy Databases
 Create a docker-compose.yml file using the content from scripts/docker-compose.yml in the repository.
 
 Launch:
 
+Bash
 sudo docker compose up -d
 sudo docker ps
 Step 5: Kubernetes Cluster Setup (AWS EKS)
 Deploy the EKS Control Plane and Worker Nodes.
 
-5.1 Create IAM Roles
-Create two roles in IAM:
-
-openedx-eks-cluster-role: For EKS Cluster. (Policy: AmazonEKSClusterPolicy).
-
-openedx-eks-node-role: For Worker Nodes. (Policies: AmazonEKSWorkerNodePolicy, AmazonEC2ContainerRegistryReadOnly, AmazonEKS_CNI_Policy).
-
-5.2 Create EKS Cluster
-Name: openedx-cluster
-
+5.1 Create EKS Cluster & Node Groups
 Role: openedx-eks-cluster-role
-
-Networking:
 
 VPC: openedx-vpc
 
-Subnets: Select ONLY Public and Private App subnets. (Remove Data Subnets).
+Subnets: Select Public and Private App subnets.
 
-Endpoint: Public and Private.
+Node Group: openedx-workers-ng (Instance: t3.large, Subnets: Private App).
 
-5.3 Create Worker Node Group
-Name: openedx-workers-ng
-
-Instance Type: t3.large (8GB RAM).
-
-Subnets: Select ONLY Private App Subnets.
-
-Scaling: Min: 1, Max: 3, Desired: 2.
-
-5.4 Option B: Setup via Terraform
+5.2 Option B: Setup via Terraform
 Source Code: terraform/eks/main.tf
 
+Deployment Command:
 
+Bash
 cd terraform/eks
 terraform init
 terraform apply -auto-approve
@@ -245,9 +224,7 @@ Step 6: Deployment Station & Application Launch
 Configure the Bastion Host to manage the cluster and launch OpenEdX using Tutor.
 
 6.1 Install Tools on Bastion
-Connect to Bastion and run:
-
-
+Bash
 # AWS CLI
 curl "[https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip](https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip)" -o "awscliv2.zip"
 unzip awscliv2.zip && sudo ./aws/install
@@ -262,64 +239,85 @@ python3 -m venv venv
 source venv/bin/activate
 pip install "tutor[full]"
 6.2 Configure Access
-AWS CLI: aws configure (Enter credentials).
+Bash
+# Configure AWS Credentials
+aws configure
 
-Kubectl: aws eks update-kubeconfig --region us-east-1 --name openedx-cluster.
-
+# Connect to Cluster
+aws eks update-kubeconfig --region us-east-1 --name openedx-cluster
 6.3 Configure OpenEdX (Tutor)
-Initialize: tutor config save --interactive
+Initialize Configuration:
 
-External DB Configuration: Edit config.yml to point to RDS and Utility Server IPs.
+Bash
+tutor config save --interactive
+External DB Configuration:
 
+Edit config.yml to point to RDS and Utility Server IPs.
 
+Bash
 nano "$(tutor config printroot)/config.yml"
 (Append the external database configuration block referencing your RDS Endpoint and Utility Server IP).
 
 6.4 Launch Deployment
-
+Bash
 tutor config save
-
 tutor k8s launch
-
-
-## Step 7: Post-Deployment Configuration (Monitoring & Ingress)
-
+Step 7: Post-Deployment Configuration (Monitoring & Ingress)
 Once the core platform is running, we enable the monitoring stack and finalize the Ingress configuration to expose the platform via an AWS Application Load Balancer (ALB).
 
-### 7.1 Enable Monitoring (Prometheus & Grafana)
-
+7.1 Enable Monitoring (Prometheus & Grafana)
 We use the official Helm charts to deploy a lightweight monitoring stack specifically for the EKS cluster.
 
-**1. Add Helm Repositories:**
-         
+1. Add Helm Repositories:
+
+Bash
 helm repo add prometheus-community [https://prometheus-community.github.io/helm-charts](https://prometheus-community.github.io/helm-charts)
 helm repo update
-
 2. Install Prometheus & Grafana Stack:
 
-
+Bash
 helm install monitoring prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
   --set grafana.service.type=LoadBalancer
 3. Verify Installation:
 
-
+Bash
 kubectl get pods -n monitoring
-# Wait until all pods are in 'Running' state.
 7.2 Finalize Ingress Controller (Public Access)
 By default, the Nginx Ingress Controller might not assign an external address immediately. We patch the service to ensure it provisions a public Load Balancer.
 
 1. Patch Ingress Service:
 
-
+Bash
 kubectl patch svc -n ingress-nginx ingress-nginx-controller \
   -p '{"spec": {"type": "LoadBalancer"}}'
-2. Get Load Balancer URL: Run the following command to retrieve the DNS name of your Load Balancer. This is the URL you will point your domain (Route53) to.
+2. Get Load Balancer URL:
 
-
+Bash
 kubectl get svc -n ingress-nginx ingress-nginx-controller
-Copy the EXTERNAL-IP (e.g., a4d...us-east-1.elb.amazonaws.com).
+Copy the EXTERNAL-IP (e.g., a4d...us-east-1.elb.amazonaws.com). This is your LMS URL.
 
+Step 8: Autoscaling Verification (HPA Stress Test)
+To ensure the platform meets Hyperscale Readiness criteria, we validate the Horizontal Pod Autoscaler (HPA) using synthetic load.
 
-Deployment Complete! The OpenEdX platform is now running on AWS EKS with a highly available, secure, and scalable architecture.
+8.1 Setup Load Generators
+Ensure the load scripts are executable.
+
+Bash
+chmod +x scripts/*.sh
+8.2 Run Load Test
+Execute the unified load script. This creates internal ephemeral pods to flood LMS and CMS services.
+
+Bash
+./scripts/generate_load.sh
+8.3 Verify Scaling
+Watch the HPA status in a separate terminal. You should see replicas increase from 1 to 3 as CPU usage exceeds 50%.
+
+Bash
+kubectl get hpa -n openedx -w
+8.4 Cleanup
+Stop the load generators.
+
+Bash
+./scripts/stop_load.sh
