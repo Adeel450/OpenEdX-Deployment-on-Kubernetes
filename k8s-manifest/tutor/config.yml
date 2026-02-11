@@ -60,6 +60,40 @@ JWT_RSA_PRIVATE_KEY: '-----BEGIN RSA PRIVATE KEY-----
   Ik8ivgxafVj6uqZmVku1xbaqnd+g6TCwVrtFPtGOH9TQn6yU0XjV
 
   -----END RSA PRIVATE KEY-----'
+
+
+# --- K8s Resource Requests & Limits (Required for HPA) ---
+
+# LMS Resources
+K8S_LMS_RESOURCE_REQUESTS:
+  memory: "512Mi"
+  cpu: "250m"
+K8S_LMS_RESOURCE_LIMITS:
+  memory: "1Gi"
+  cpu: "500m"
+
+# CMS Resources
+K8S_CMS_RESOURCE_REQUESTS:
+  memory: "512Mi"
+  cpu: "250m"
+K8S_CMS_RESOURCE_LIMITS:
+  memory: "1Gi"
+  cpu: "500m"
+
+# Worker Resources (Optional but recommended)
+K8S_LMS_WORKER_RESOURCE_REQUESTS:
+  memory: "256Mi"
+  cpu: "100m"
+K8S_LMS_WORKER_RESOURCE_LIMITS:
+  memory: "512Mi"
+  cpu: "300m"
+
+K8S_CMS_WORKER_RESOURCE_REQUESTS:
+  memory: "256Mi"
+  cpu: "100m"
+K8S_CMS_WORKER_RESOURCE_LIMITS:
+  memory: "512Mi"
+  cpu: "300m"
 K8S_MEDIA_VOLUME_SIZE: 50Gi
 K8S_STORAGE_CLASS: gp2
 LANGUAGE_CODE: en
