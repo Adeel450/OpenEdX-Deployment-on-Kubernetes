@@ -1,17 +1,3 @@
-بھائی جان، میں تہہ دل سے معذرت خواہ ہوں۔ آپ کا غصہ بالکل بجا ہے۔ مجھ سے واقعی غلطی ہوئی کہ میں نے Step 1 تو ٹھیک بنایا لیکن Step 2 اور اس کے بعد والا حصہ "Text" فارمیٹ میں ہی رہ گیا اور Markdown (`**`, `###`, `---`) اپلائی نہیں ہوا۔
-
-یہ رہی آپ کی **100% Final Corrected Deployment Guide**۔
-
-میں نے ایک ایک لائن چیک کی ہے کہ:
-
-1. ہر سٹیپ میں `##` اور `###` ہیڈنگز ہوں۔
-2. ہر کمانڈ `Code Block` (کالے ڈبے) میں ہو۔
-3. ہر فیلڈ (جیسے **Name**, **VPC**) بولڈ ہو۔
-4. ہر سیکشن کے بعد `---` لائن ہو۔
-
-اسے کاپی کریں، یہ اب GitHub پر بالکل پرفیکٹ نظر آئے گی۔
-
-```markdown
 # OpenEdX Deployment Guide on AWS EKS
 
 This guide provides a comprehensive, step-by-step walkthrough for deploying a production-ready OpenEdX platform on AWS Elastic Kubernetes Service (EKS).
@@ -70,153 +56,134 @@ Alternatively, provision the network using the provided Terraform script.
 cd terraform/vpc
 terraform init
 terraform apply -auto-approve
-
-```
-
----
-
-## Step 2: External Database Layer Setup (RDS & Security)
-
+Step 2: External Database Layer Setup (RDS & Security)
 To ensure data persistence and security, we deploy MySQL on AWS RDS inside isolated private subnets.
 
-### 2.1 Create Database Security Group
-
+2.1 Create Database Security Group
 Define firewall rules to allow traffic only from the Application Layer.
 
-* **Name:** `openedx-data-sg`
-* **VPC:** `openedx-vpc`
-* **Inbound Rules:** Allow `10.0.0.0/16` (VPC CIDR) on ports:
-* `3306` (MySQL)
-* `27017` (MongoDB)
-* `6379` (Redis)
-* `9200` (Elasticsearch)
+Name: openedx-data-sg
 
+VPC: openedx-vpc
 
+Inbound Rules: Allow 10.0.0.0/16 (VPC CIDR) on ports:
 
-### 2.2 Create DB Subnet Group
+3306 (MySQL)
 
+27017 (MongoDB)
+
+6379 (Redis)
+
+9200 (Elasticsearch)
+
+2.2 Create DB Subnet Group
 Go to RDS > Subnet groups > Create DB subnet group.
 
-* **Name:** `openedx-db-subnet-group`
-* **Subnets:** Select ONLY the two Private Data Subnets (`10.0.5.0/24`, `10.0.6.0/24`).
+Name: openedx-db-subnet-group
 
-### 2.3 Provision MySQL Database (AWS RDS)
+Subnets: Select ONLY the two Private Data Subnets (10.0.5.0/24, 10.0.6.0/24).
 
+2.3 Provision MySQL Database (AWS RDS)
 Go to RDS > Create database > Standard create > MySQL.
 
-* **Version:** MySQL 8.0.x.
-* **Settings:**
-* **Identifier:** `openedx-mysql`
-* **Master Username:** `admin` (Save your password!)
-* **Instance:** `db.t3.medium`
+Version: MySQL 8.0.x.
 
+Settings:
 
-* **Connectivity:**
-* **VPC:** `openedx-vpc`
-* **Subnet Group:** `openedx-db-subnet-group`
-* **Public Access:** NO
-* **Security Group:** Select `openedx-data-sg`.
+Identifier: openedx-mysql
 
+Master Username: admin (Save your password!)
 
+Instance: db.t3.medium
 
-### 2.4 Option B: Setup via Terraform
+Connectivity:
 
-* **Source Code:** `terraform/databases/mysql.tf`
+VPC: openedx-vpc
 
-**Deployment Command:**
+Subnet Group: openedx-db-subnet-group
 
-```bash
+Public Access: NO
+
+Security Group: Select openedx-data-sg.
+
+2.4 Option B: Setup via Terraform
+Source Code: terraform/databases/mysql.tf
+
+Deployment Command:
+
+Bash
 cd terraform/databases
 terraform init
 terraform apply -auto-approve
-
-```
-
----
-
-## Step 3: Compute Layer Setup (Utility & Bastion)
-
+Step 3: Compute Layer Setup (Utility & Bastion)
 We require two EC2 instances:
 
-1. **Utility Server (Private):** Hosts NoSQL databases (Mongo, Redis, Elastic).
-2. **Bastion Host (Public):** Jump Server for secure access.
+Utility Server (Private): Hosts NoSQL databases (Mongo, Redis, Elastic).
 
-### 3.1 Launch Utility Server (Private)
+Bastion Host (Public): Jump Server for secure access.
 
-* **Name:** `openedx-data-utility`
-* **AMI:** Ubuntu 22.04 LTS
-* **Instance Type:** `t3.medium` (4GB RAM is required for Elasticsearch).
-* **Subnet:** `private-data-subnet-1` (Private).
-* **Public IP:** Disable.
-* **Security Group:** `openedx-utility-sg` (Allow traffic from `10.0.0.0/16`).
+3.1 Launch Utility Server (Private)
+Name: openedx-data-utility
 
-### 3.2 Launch Bastion Host (Public)
+AMI: Ubuntu 22.04 LTS
 
-* **Name:** `openedx-bastion`
-* **AMI:** Ubuntu 22.04 LTS
-* **Instance Type:** `t2.micro`
-* **Subnet:** `public-subnet-1` (Public).
-* **Public IP:** Enable.
-* **Security Group:** `openedx-bastion-sg` (Allow SSH from My IP).
+Instance Type: t3.medium (4GB RAM is required for Elasticsearch).
 
-### 3.3 Option B: Setup via Terraform
+Subnet: private-data-subnet-1 (Private).
 
-* **Source Code:** `terraform/databases/utility.tf`
+Public IP: Disable.
 
-**Deployment Command:**
+Security Group: openedx-utility-sg (Allow traffic from 10.0.0.0/16).
 
-```bash
+3.2 Launch Bastion Host (Public)
+Name: openedx-bastion
+
+AMI: Ubuntu 22.04 LTS
+
+Instance Type: t2.micro
+
+Subnet: public-subnet-1 (Public).
+
+Public IP: Enable.
+
+Security Group: openedx-bastion-sg (Allow SSH from My IP).
+
+3.3 Option B: Setup via Terraform
+Source Code: terraform/databases/utility.tf
+
+Deployment Command:
+
+Bash
 cd terraform/databases
 terraform init
 terraform apply -auto-approve
-
-```
-
----
-
-## Step 4: NoSQL Database Setup (Docker)
-
+Step 4: NoSQL Database Setup (Docker)
 We install MongoDB, Redis, and Elasticsearch on the private Utility Server.
 
-### 4.1 Secure Access via SSH Agent Forwarding
-
+4.1 Secure Access via SSH Agent Forwarding
 Since the Utility server has no Public IP, connect via the Bastion.
 
-**1. Load your key (Local Machine):**
+1. Load your key (Local Machine):
 
-```bash
+Bash
 ssh-add adeel-key.pem
+2. Connect to Bastion:
 
-```
-
-**2. Connect to Bastion:**
-
-```bash
+Bash
 ssh -A ubuntu@<BASTION-PUBLIC-IP>
+3. Jump to Utility Server:
 
-```
-
-**3. Jump to Utility Server:**
-
-```bash
+Bash
 ssh ubuntu@10.0.5.90  # Replace with Utility Server Private IP
-
-```
-
-### 4.2 Install Docker Engine
-
+4.2 Install Docker Engine
 Run on Utility Server (Ensure NAT Gateway is active):
 
-```bash
+Bash
 sudo apt update
 sudo apt install -y docker.io docker-compose-v2
 sudo usermod -aG docker $USER
-
-```
-
-### 4.3 Configure System & Storage
-
-```bash
+4.3 Configure System & Storage
+Bash
 # Create Persistent Directories
 sudo mkdir -p /openedx/data/{mongo,redis,elasticsearch}
 sudo chmod -R 777 /openedx/data
@@ -224,56 +191,40 @@ sudo chmod -R 777 /openedx/data
 # Increase Memory Map Limit for Elasticsearch
 sudo sysctl -w vm.max_map_count=262144
 echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
+4.4 Deploy Databases
+Create a docker-compose.yml file using the content from scripts/docker-compose.yml in the repository.
 
-```
+Launch:
 
-### 4.4 Deploy Databases
-
-Create a `docker-compose.yml` file using the content from `scripts/docker-compose.yml` in the repository.
-
-**Launch:**
-
-```bash
+Bash
 sudo docker compose up -d
 sudo docker ps
-
-```
-
----
-
-## Step 5: Kubernetes Cluster Setup (AWS EKS)
-
+Step 5: Kubernetes Cluster Setup (AWS EKS)
 Deploy the EKS Control Plane and Worker Nodes.
 
-### 5.1 Create EKS Cluster & Node Groups
+5.1 Create EKS Cluster & Node Groups
+Role: openedx-eks-cluster-role
 
-* **Role:** `openedx-eks-cluster-role`
-* **VPC:** `openedx-vpc`
-* **Subnets:** Select Public and Private App subnets.
-* **Node Group:** `openedx-workers-ng` (Instance: `t3.large`, Subnets: Private App).
+VPC: openedx-vpc
 
-### 5.2 Option B: Setup via Terraform
+Subnets: Select Public and Private App subnets.
 
-* **Source Code:** `terraform/eks/main.tf`
+Node Group: openedx-workers-ng (Instance: t3.large, Subnets: Private App).
 
-**Deployment Command:**
+5.2 Option B: Setup via Terraform
+Source Code: terraform/eks/main.tf
 
-```bash
+Deployment Command:
+
+Bash
 cd terraform/eks
 terraform init
 terraform apply -auto-approve
-
-```
-
----
-
-## Step 6: Deployment Station & Application Launch
-
+Step 6: Deployment Station & Application Launch
 Configure the Bastion Host to manage the cluster and launch OpenEdX using Tutor.
 
-### 6.1 Install Tools on Bastion
-
-```bash
+6.1 Install Tools on Bastion
+Bash
 # AWS CLI
 curl "[https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip](https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip)" -o "awscliv2.zip"
 unzip awscliv2.zip && sudo ./aws/install
@@ -287,148 +238,86 @@ sudo apt install -y python3-pip python3-venv
 python3 -m venv venv
 source venv/bin/activate
 pip install "tutor[full]"
-
-```
-
-### 6.2 Configure Access
-
-```bash
+6.2 Configure Access
+Bash
 # Configure AWS Credentials
 aws configure
 
 # Connect to Cluster
 aws eks update-kubeconfig --region us-east-1 --name openedx-cluster
+6.3 Configure OpenEdX (Tutor)
+Initialize Configuration:
 
-```
-
-### 6.3 Configure OpenEdX (Tutor)
-
-**Initialize Configuration:**
-
-```bash
+Bash
 tutor config save --interactive
+External DB Configuration:
 
-```
+Edit config.yml to point to RDS and Utility Server IPs.
 
-**External DB Configuration:**
-
-Edit `config.yml` to point to RDS and Utility Server IPs.
-
-```bash
+Bash
 nano "$(tutor config printroot)/config.yml"
+(Append the external database configuration block referencing your RDS Endpoint and Utility Server IP).
 
-```
-
-*(Append the external database configuration block referencing your RDS Endpoint and Utility Server IP).*
-
-### 6.4 Launch Deployment
-
-```bash
+6.4 Launch Deployment
+Bash
 tutor config save
 tutor k8s launch
-
-```
-
----
-
-## Step 7: Post-Deployment Configuration (Monitoring & Ingress)
-
+Step 7: Post-Deployment Configuration (Monitoring & Ingress)
 Once the core platform is running, we enable the monitoring stack and finalize the Ingress configuration to expose the platform via an AWS Application Load Balancer (ALB).
 
-### 7.1 Enable Monitoring (Prometheus & Grafana)
-
+7.1 Enable Monitoring (Prometheus & Grafana)
 We use the official Helm charts to deploy a lightweight monitoring stack specifically for the EKS cluster.
 
-**1. Add Helm Repositories:**
+1. Add Helm Repositories:
 
-```bash
+Bash
 helm repo add prometheus-community [https://prometheus-community.github.io/helm-charts](https://prometheus-community.github.io/helm-charts)
 helm repo update
+2. Install Prometheus & Grafana Stack:
 
-```
-
-**2. Install Prometheus & Grafana Stack:**
-
-```bash
+Bash
 helm install monitoring prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
   --set grafana.service.type=LoadBalancer
+3. Verify Installation:
 
-```
-
-**3. Verify Installation:**
-
-```bash
+Bash
 kubectl get pods -n monitoring
-
-```
-
-### 7.2 Finalize Ingress Controller (Public Access)
-
+7.2 Finalize Ingress Controller (Public Access)
 By default, the Nginx Ingress Controller might not assign an external address immediately. We patch the service to ensure it provisions a public Load Balancer.
 
-**1. Patch Ingress Service:**
+1. Patch Ingress Service:
 
-```bash
+Bash
 kubectl patch svc -n ingress-nginx ingress-nginx-controller \
   -p '{"spec": {"type": "LoadBalancer"}}'
+2. Get Load Balancer URL:
 
-```
-
-**2. Get Load Balancer URL:**
-
-```bash
+Bash
 kubectl get svc -n ingress-nginx ingress-nginx-controller
+Copy the EXTERNAL-IP (e.g., a4d...us-east-1.elb.amazonaws.com). This is your LMS URL.
 
-```
+Step 8: Autoscaling Verification (HPA Stress Test)
+To ensure the platform meets Hyperscale Readiness criteria, we validate the Horizontal Pod Autoscaler (HPA) using synthetic load.
 
-*Copy the `EXTERNAL-IP` (e.g., `a4d...us-east-1.elb.amazonaws.com`). This is your LMS URL.*
-
----
-
-## Step 8: Autoscaling Verification (HPA Stress Test)
-
-To ensure the platform meets **Hyperscale Readiness** criteria, we validate the Horizontal Pod Autoscaler (HPA) using synthetic load.
-
-### 8.1 Setup Load Generators
-
+8.1 Setup Load Generators
 Ensure the load scripts are executable.
 
-```bash
+Bash
 chmod +x scripts/*.sh
-
-```
-
-### 8.2 Run Load Test
-
+8.2 Run Load Test
 Execute the unified load script. This creates internal ephemeral pods to flood LMS and CMS services.
 
-```bash
+Bash
 ./scripts/generate_load.sh
-
-```
-
-### 8.3 Verify Scaling
-
+8.3 Verify Scaling
 Watch the HPA status in a separate terminal. You should see replicas increase from 1 to 3 as CPU usage exceeds 50%.
 
-```bash
+Bash
 kubectl get hpa -n openedx -w
-
-```
-
-### 8.4 Cleanup
-
+8.4 Cleanup
 Stop the load generators.
 
-```bash
+Bash
 ./scripts/stop_load.sh
-
-```
-
----
-
-```
-
-```
