@@ -1,8 +1,20 @@
 🚀 OpenEdX — Production Deployment on AWS EKS
 
-Production-grade, highly-available OpenEdX LMS deployed on AWS EKS using Terraform (IaC), Kubernetes manifests, and automation scripts. Designed with enterprise best practices: externalized databases, secure networking, observability, backups, disaster recovery, and autoscaling validation.
+Production-grade, highly available OpenEdX LMS deployed on AWS EKS using Terraform (Infrastructure as Code), Kubernetes manifests, and automation scripts.
 
-Table of contents
+The platform follows enterprise best practices including:
+
+Externalized databases
+
+Secure VPC architecture
+
+Observability & monitoring
+
+Backup & disaster recovery
+
+Horizontal Pod Autoscaling validation
+
+📑 Table of Contents
 
 Architecture Overview
 
@@ -20,31 +32,36 @@ HPA & Scalability Verification
 
 Troubleshooting & Support
 
-Architecture Overview
+Architecture Overview Video
 
-This platform is deployed inside a custom AWS VPC spanning two Availability Zones (us-east-1a, us-east-1b) for high availability and fault tolerance.
+Contact
 
-Key components
+🏗 Architecture Overview
 
-Orchestration: AWS EKS (Kubernetes 1.30+)
+The infrastructure is deployed inside a custom AWS VPC spanning:
 
-Ingress: Nginx Ingress Controller (ALB-backed)
+us-east-1a
 
-Edge Security: Amazon CloudFront + AWS WAF
+us-east-1b
 
-Compute: EKS worker nodes (private subnets) + Bastion Host (public subnet)
+This ensures high availability and fault tolerance.
 
-Data layer (externalized): Amazon RDS (MySQL, Multi-AZ) + Utility EC2 for MongoDB/Redis/Elasticsearch (Dockerized)
+🔹 Core Components
+Layer	Technology
+Orchestration	AWS EKS (Kubernetes 1.30+)
+Ingress	Nginx Ingress Controller (ALB-backed)
+Edge Security	Amazon CloudFront + AWS WAF
+Compute	Private EKS worker nodes + Bastion Host
+Database	Amazon RDS (MySQL Multi-AZ)
+Utility Services	MongoDB, Redis, Elasticsearch (Dockerized EC2)
+Storage	Amazon EBS (gp3)
+Monitoring	Prometheus & Grafana
+Autoscaling	Kubernetes HPA (CPU-based)
 
-Storage: Amazon EBS (gp3) via PVCs
+All workloads and databases operate in private subnets.
+Administrative access is strictly controlled via a hardened bastion host.
 
-Monitoring: Prometheus & Grafana (Helm)
-
-Autoscaling: Kubernetes HPA (CPU-based scaling)
-
-All workloads and databases operate in private subnets. Administrative access is controlled via a hardened bastion host.
-
-Repository Structure
+📂 Repository Structure
 .
 ├── README.md
 ├── diagrams/
@@ -61,134 +78,137 @@ Repository Structure
 ├── terraform/
 └── screenshots/
 
-Prerequisites
+⚙️ Prerequisites
+
+Install the following tools on the Bastion Host or deployment machine:
 
 AWS CLI v2
 
 kubectl
 
-terraform (v1.0+)
+Terraform (v1.0+)
 
-helm
+Helm
 
-tutor (OpenEdX Manager)
+Tutor (OpenEdX Manager)
 
 Python 3.10+
 
-Quick Start (Bastion Host Workflow)
+🚀 Quick Start (Bastion Host Workflow)
 
-(Your original deployment steps remain unchanged here — omitted for brevity in this preview, but keep them exactly as they are in your current README.)
+Refer to documentation/DEPLOYMENT_GUIDE.md for complete deployment instructions.
 
-Security & Maintenance
+🔐 Security & Maintenance
 
-Private subnets for workloads
+Private subnets for workloads and databases
 
-IAM-based access control
+IAM-based role access
 
-Secrets Manager / encrypted secrets
+AWS Secrets Manager for sensitive credentials
 
-Regular patching & AMI rotation
+Regular node patching & AMI rotation
 
-MFA enforced on Bastion access
+MFA enforced for bastion access
 
-Backup & Restore
+💾 Backup & Restore
 
-Daily automated backups scheduled at 02:00 UTC.
+Daily automated backups are scheduled at:
 
-Manual Backup
+02:00 UTC
 
+🔹 Manual Backup
 ./scripts/backup.sh
 
-
-Restore
-
+🔹 Restore from Backup
 ./scripts/restore.sh <TIMESTAMP>
+
+
+Example:
+
+./scripts/restore.sh 2026-02-10_02-00-00
 
 📈 HPA & Scalability Verification
 
-To validate the autoscaling behavior of the OpenEdX LMS and CMS services, dedicated load-generation scripts have been implemented within the scripts/ directory.
+To validate production-grade autoscaling behavior, controlled load testing scripts have been implemented.
 
-These scripts simulate high internal cluster traffic using lightweight Kubernetes pods and validate Horizontal Pod Autoscaler (HPA) responsiveness under controlled stress conditions.
+These scripts generate synthetic internal traffic to both LMS and CMS services and verify Kubernetes Horizontal Pod Autoscaler (HPA) responsiveness.
 
-Objective
+🎯 Objective
 
-The load testing workflow verifies:
+The load testing workflow validates:
 
-Proper configuration of Kubernetes HPA
+HPA configuration accuracy
 
-Metrics Server functionality
+Metrics Server availability
 
-CPU-based autoscaling thresholds (e.g., 50%)
+CPU-based scaling thresholds (50%)
 
-Automatic replica scaling under load
+Automatic replica scaling
 
-Elastic recovery once load subsides
+Elastic recovery after load removal
 
-Production-grade scalability readiness
+Enterprise-grade scalability readiness
 
-Script Location
+📂 Script Location
 scripts/
-├── generate_load.sh   # Initiates high-frequency internal traffic
-└── stop_load.sh       # Gracefully terminates load generation
+├── generate_load.sh   # Starts load generation
+└── stop_load.sh       # Stops load generation
 
-Execution Procedure
+▶️ Execution Steps
 1️⃣ Make Scripts Executable (First Time Only)
 chmod +x scripts/generate_load.sh scripts/stop_load.sh
 
 2️⃣ Start Load Generation
 ./scripts/generate_load.sh
 
+🔍 What This Script Does
 
-This script performs the following:
+Deploys temporary BusyBox pods inside the cluster
 
-Deploys ephemeral BusyBox pods inside the cluster
-
-Generates high-frequency HTTP requests to:
+Continuously sends requests to:
 
 http://lms.openedx.svc.cluster.local:8000
 http://cms.openedx.svc.cluster.local:8000
 
 
-Continuously monitors HPA status:
+Watches HPA in real-time:
 
 kubectl get hpa -n openedx -w
 
-3️⃣ Observe Autoscaling Behavior
-
-During load execution, you should observe:
-
-CPU utilization crossing defined threshold
-
-LMS and CMS replicas scaling (e.g., 1 → 3)
-
-HPA reacting dynamically based on metrics
-
-Monitor resource usage with:
-
+3️⃣ Monitor Resource Usage
 kubectl top pods -n openedx
+
+
+Expected behavior:
+
+CPU crosses defined threshold
+
+Replicas scale (e.g., 1 → 3)
+
+HPA reacts dynamically
 
 4️⃣ Stop Load Generation
 ./scripts/stop_load.sh
 
 
-This command safely removes load-generator pods:
+This removes the load pods safely:
 
 kubectl delete pod load-lms load-cms --ignore-not-found=true
 
 
 After stopping load:
 
-CPU utilization decreases
+CPU usage drops
 
-HPA scales deployments back to minimum replicas
+Replicas scale back to minimum
 
-Cluster returns to steady operational state
+Cluster stabilizes
 
-Validation Outcome
+✅ Validation Outcome
 
 Successful execution confirms:
 
-Functional HPA configuration
+Functional HPA
 
 Stable Metrics Server integration
 
@@ -196,24 +216,34 @@ Elastic infrastructure design
 
 Production-ready autoscaling capability
 
-This testing methodology demonstrates operational discipline, scalability assurance, and adherence to enterprise Kubernetes best practices.
+This demonstrates operational discipline and adherence to Kubernetes best practices.
 
-Troubleshooting & Support
+🛠 Troubleshooting & Support
 
-kubectl describe pod <pod> -n openedx
+Check pod status:
 
-kubectl logs <pod> -n openedx
+kubectl describe pod <pod-name> -n openedx
+
+
+View logs:
+
+kubectl logs <pod-name> -n openedx
+
+
+Check HPA:
 
 kubectl get hpa -n openedx
 
-Verify Metrics Server health
+
+Verify Metrics Server:
+
+kubectl get deployment metrics-server -n kube-system
 
 📺 Architecture Overview Video
 
-🔗 Architecture Walkthrough:
-https://drive.google.com/file/d/1nfYCW3ljfHrNblmQhkmN2aozUnroZJfK/view?usp=sharing
+🔗 https://drive.google.com/file/d/1nfYCW3ljfHrNblmQhkmN2aozUnroZJfK/view?usp=sharing
 
-Contact
+👤 Contact
 
 Muhammad Adeel Munir
 DevOps Engineer
