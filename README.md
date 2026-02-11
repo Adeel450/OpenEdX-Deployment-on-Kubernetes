@@ -1,53 +1,47 @@
 # 🚀 OpenEdX — Production Deployment on AWS EKS
 
-**Production-grade, highly-available OpenEdX LMS deployed on AWS EKS** using Terraform (IaC), Kubernetes manifests, and automation scripts.
-
-Designed with enterprise best practices including externalized databases, secure networking, observability, automated backups, autoscaling, and disaster recovery.
+**Production-grade, highly-available OpenEdX LMS deployed on AWS EKS** using Terraform (IaC), Kubernetes manifests, and automation scripts. Designed with enterprise best practices: externalized databases, secure networking, observability, backups, and disaster recovery.
 
 ---
 
-## 📑 Table of Contents
+## Table of contents
 
-1. [Architecture Overview](#-architecture-overview)
-2. [Repository Structure](#-repository-structure)
-3. [Prerequisites](#-prerequisites)
-4. [Quick Start (Bastion Host Workflow)](#-quick-start-bastion-host-workflow)
-5. [Security & Maintenance](#-security--maintenance)
-6. [Backup & Restore](#-backup--restore)
-7. [HPA & Scalability Verification](#-hpa--scalability-verification)
-8. [Troubleshooting & Support](#-troubleshooting--support)
-9. [Architecture Overview Video](#-architecture-overview-video)
+1. [Architecture Overview](#architecture-overview)
+2. [Repository Structure](#repository-structure)
+3. [Prerequisites](#prerequisites)
+4. [Quick Start (Bastion Host Workflow)](#quick-start-bastion-host-workflow)
 
----
-
-## 🏗 Architecture Overview
-
-The platform is deployed inside a custom AWS VPC spanning **two Availability Zones**:
-
-- `us-east-1a`
-- `us-east-1b`
-
-This ensures **high availability, redundancy, and fault tolerance**.
-
-### 🔹 Key Components
-
-- **Orchestration:** AWS EKS (Kubernetes 1.30+)
-- **Ingress:** Nginx Ingress Controller (ALB-backed)
-- **Edge Security:** Amazon CloudFront + AWS WAF
-- **Compute:** EKS Worker Nodes (Private Subnets) + Bastion Host (Public Subnet)
-- **Data Layer (Externalized):**
-  - Amazon RDS (MySQL Multi-AZ)
-  - Utility EC2 (MongoDB, Redis, Elasticsearch — Dockerized)
-- **Storage:** Amazon EBS (gp3) via PVCs
-- **Monitoring:** Prometheus & Grafana (Helm)
-- **Autoscaling:** Kubernetes Horizontal Pod Autoscaler (HPA)
-
-> All workloads and databases operate in private subnets.  
-> Administrative access is provided exclusively via a hardened bastion host.
+   * Step 1: Connect to AWS & EKS
+   * Step 2: Install & Configure Tutor
+   * Step 3: Configure External Databases
+   * Step 4: Deploy OpenEdX on Kubernetes
+   * Step 5: Enable Monitoring
+   * Step 6: Expose Ingress Controller
+5. [Security & Maintenance](#security--maintenance)
+6. [Backup & Restore](#backup--restore)
+7. [Troubleshooting & Support](#troubleshooting--support)
 
 ---
 
-## 📂 Repository Structure
+## Architecture Overview
+
+This platform is deployed inside a custom AWS VPC spanning **two Availability Zones** (`us-east-1a`, `us-east-1b`) for high availability and fault tolerance.
+
+**Key components**
+
+* **Orchestration:** AWS EKS (Kubernetes 1.30+)
+* **Ingress:** Nginx Ingress Controller (ALB-backed)
+* **Edge Security:** Amazon CloudFront + AWS WAF
+* **Compute:** EKS worker nodes (private subnets) + Bastion Host (public subnet)
+* **Data layer (externalized):** Amazon RDS (MySQL, Multi‑AZ) + Utility EC2 for MongoDB/Redis/Elasticsearch (Dockerized)
+* **Storage:** Amazon EBS (gp3) via PVCs
+* **Monitoring:** Prometheus & Grafana (Helm)
+
+> All application workloads and databases are deployed in private subnets. Administrative access is provided via a hardened bastion host.
+
+---
+
+## Repository Structure
 
 ```text
 .
@@ -63,56 +57,101 @@ This ensures **high availability, redundancy, and fault tolerance**.
 │   └── tutor-manifest/
 ├── scripts/
 │   ├── backup.sh
-│   ├── restore.sh
-│   ├── generate_load.sh
-│   └── stop_load.sh
+│   └── restore.sh
 ├── terraform/
 │   ├── vpc/
 │   ├── eks/
 │   └── databases/
 └── screenshots/
-⚙️ Prerequisites
-Run the following on the Bastion Host or deployment workstation:
+```
 
-AWS CLI v2
+---
 
-kubectl (cluster-compatible version)
+## Prerequisites
 
-Terraform v1.0+
+Run these on the **Bastion Host** or deployment workstation with network access to the private VPC resources.
 
-Helm
+* AWS CLI v2 (configured with IAM credentials scoped to required infra)
+* kubectl (compatible with EKS cluster version)
+* terraform (v1.0+)
+* tutor (OpenEdX Manager)
+* helm
+* Python 3.10+ (for Tutor virtualenv)
 
-Tutor (OpenEdX Manager)
+Security note: Prefer using temporary credentials (IAM roles) or OIDC where possible; avoid embedding long-lived secrets in repo files.
 
-Python 3.10+
+---
 
-🔐 Prefer IAM roles or OIDC over long-lived static credentials.
+## Quick Start (Bastion Host Workflow)
 
-🚀 Quick Start (Bastion Host Workflow)
-Ensure VPC, EKS, and RDS are provisioned via Terraform first.
-See documentation/DEPLOYMENT_GUIDE.md.
+> **Important:** Provision network, EKS cluster, and RDS using Terraform first. See `documentation/DEPLOYMENT_GUIDE.md`.
 
-Step 1 — Connect to AWS & EKS
+### Step 1 — Connect to AWS & EKS cluster
+
+**Configure AWS credentials**
+
+```bash
 aws configure
-aws eks update-kubeconfig --region us-east-1 --name openedx-cluster
+# Provide Access Key ID, Secret Access Key, default region (us-east-1) and output (json)
+```
+
+**Update kubeconfig**
+
+```bash
+aws eks update-kubeconfig \
+  --region us-east-1 \
+  --name openedx-cluster
+```
+
+**Verify cluster access**
+
+```bash
 kubectl get nodes
-Step 2 — Install & Configure Tutor
+# Expect worker nodes in the Ready state
+```
+
+---
+
+### Step 2 — Install & configure Tutor
+
+**Create and activate a virtual environment**
+
+```bash
 python3 -m venv venv
 source venv/bin/activate
+```
+
+**Install Tutor (full)**
+
+```bash
 pip install "tutor[full]"
+```
+
+**Run interactive configuration**
+
+```bash
 tutor config save --interactive
-Set:
+```
 
-Production → Yes
+When prompted:
 
-SSL handled externally → No inside Tutor
+* Set `production` -> **yes**
+* SSL handled at the edge (ALB/CloudFront) -> set SSL to **no** inside Tutor
 
-Step 3 — Configure External Databases
-Edit Tutor configuration:
+---
 
+### Step 3 — Configure external databases
+
+**Open Tutor configuration file**
+
+```bash
 nano "$(tutor config printroot)/config.yml"
-Add external DB configuration:
+```
 
+**Append the external database configuration (example)**
+
+```yaml
+# --- External Databases Configuration ---
 RUN_MYSQL: false
 MYSQL_HOST: "openedx-mysql.xxxxxx.us-east-1.rds.amazonaws.com"
 MYSQL_PORT: 3306
@@ -123,6 +162,7 @@ MYSQL_DATABASE: "openedx"
 RUN_MONGODB: false
 MONGODB_HOST: "10.0.5.90"
 MONGODB_PORT: 27017
+MONGODB_DATABASE: "openedx"
 
 RUN_REDIS: false
 REDIS_HOST: "10.0.5.90"
@@ -131,134 +171,148 @@ REDIS_PORT: 6379
 RUN_ELASTICSEARCH: false
 ELASTICSEARCH_HOST: "10.0.5.90"
 ELASTICSEARCH_PORT: 9200
-Then:
+ELASTICSEARCH_SCHEME: "http"
+```
 
+> Replace example hosts/credentials with secure values (use Secrets Manager or SOPS for secrets).
+
+**Save config and regenerate manifests**
+
+```bash
 tutor config save
-Step 4 — Deploy OpenEdX
+```
+
+---
+
+### Step 4 — Deploy OpenEdX on Kubernetes
+
+**Run database migrations**
+
+```bash
 tutor k8s run lms ./manage.py lms migrate
 tutor k8s run cms ./manage.py cms migrate
+```
+
+**Launch all OpenEdX K8s resources**
+
+```bash
 tutor k8s launch
+```
+
+**Monitor pods**
+
+```bash
 kubectl get pods -n openedx -w
-Step 5 — Enable Monitoring
+```
+
+---
+
+### Step 5 — Enable monitoring (Prometheus & Grafana)
+
+**Add Helm repo and update**
+
+```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
+```
 
+**Install kube-prometheus-stack**
+
+```bash
 helm install monitoring prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
   --set grafana.service.type=LoadBalancer
-Step 6 — Expose Ingress
+```
+
+**Verify monitoring components**
+
+```bash
+kubectl get pods -n monitoring
+```
+
+Tip: Secure Grafana with an ingress auth or use AWS PrivateLink / port-forward for admin access.
+
+---
+
+### Step 6 — Expose Ingress controller
+
+**Patch the ingress-nginx service to use a LoadBalancer**
+
+```bash
 kubectl patch svc ingress-nginx-controller \
   -n ingress-nginx \
   -p '{"spec":{"type":"LoadBalancer"}}'
+```
 
+**Retrieve external endpoint**
+
+```bash
 kubectl get svc -n ingress-nginx
-🔐 Security & Maintenance
-Private subnet isolation
+```
 
-Bastion host with MFA
+Follow-up: Configure ALB Ingress annotations, TLS certs via ACM, and CloudFront/WAF as described in the documentation.
 
-Secrets stored in AWS Secrets Manager or encrypted solution
+---
 
-Regular AMI rotation & Kubernetes patching
+## Security & Maintenance
 
-💾 Backup & Restore
-Daily automated backups scheduled at 02:00 UTC.
+* **Network:** Private subnets for workload and data. Public subnet only for bastion host.
+* **Access:** Bastion host with MFA and SSH agent forwarding for admin tasks.
+* **Secrets:** Store DB credentials and sensitive values in AWS Secrets Manager or an encryption solution (SOPS, Sealed Secrets).
+* **Patching:** Regularly rotate node AMIs and Kubernetes patching schedule.
 
-🔹 Manual Backup
+---
+
+## Backup & Restore
+
+* Daily automated backups scheduled at **02:00 UTC** (RDS snapshot + DB dump for utility server).
+
+**Manual backup**
+
+```bash
 ./scripts/backup.sh
-🔹 Restore
+```
+
+**Restore**
+
+```bash
 ./scripts/restore.sh <TIMESTAMP>
-📈 HPA & Scalability Verification
-To validate production-grade autoscaling capability, controlled load-testing scripts are implemented under the scripts/ directory.
+```
 
-These scripts generate synthetic internal traffic to LMS and CMS services to verify Kubernetes Horizontal Pod Autoscaler (HPA) behavior under stress.
+Record backup retention policy and test restores routinely.
 
-🎯 Objective
-This validation ensures:
+---
 
-Correct HPA configuration
+## Troubleshooting & Support
 
-Metrics Server availability
+* See `documentation/TROUBLESHOOTING.md` for curated issues and recovery steps.
+* Common checks:
 
-CPU-based autoscaling threshold enforcement (e.g., 50%)
+  * `kubectl describe pod <pod> -n openedx`
+  * `kubectl logs <pod> -n openedx --previous`
+  * Validate network ACLs and security group egress rules for DB connectivity
 
-Automatic scale-out during load
+---
 
-Elastic scale-in after load removal
+## Contact
 
-Production-grade scalability readiness
+**Submitted by:** Muhammad Adeel Munir
+**Role:** DevOps Engineer
+**Email:** [adeel.zixer11@gmail.com](mailto:adeel.zixer11@gmail.com)
 
-📂 Script Location
-scripts/
-├── backup.sh
-├── restore.sh
-├── generate_load.sh
-└── stop_load.sh
-Step 1 — Make Scripts Executable
-chmod +x scripts/generate_load.sh scripts/stop_load.sh
-Step 2 — Start Load Generation
-./scripts/generate_load.sh
-This will:
+---
 
-Deploy temporary BusyBox load pods
+---
+**📺 Architecture Overview Video**
 
-Send continuous HTTP requests to:
+A visual walkthrough of the OpenEdX + AWS EKS architecture design is available here:
 
-http://lms.openedx.svc.cluster.local:8000
-http://cms.openedx.svc.cluster.local:8000
-Monitor HPA:
+**🔗 Architecture Video (Google Drive):**
 
-kubectl get hpa -n openedx -w
-Step 3 — Observe Autoscaling
-kubectl top pods -n openedx
-Expected behavior:
+https://drive.google.com/file/d/1nfYCW3ljfHrNblmQhkmN2aozUnroZJfK/view?usp=sharing
 
-CPU exceeds threshold
+---
 
-Replicas scale (e.g., 1 → 3)
 
-HPA dynamically adjusts
 
-Step 4 — Stop Load Generation
-./scripts/stop_load.sh
-Cleanup:
-
-kubectl delete pod load-lms load-cms --ignore-not-found=true
-After stopping load:
-
-CPU drops
-
-Replicas scale back
-
-Cluster stabilizes
-
-✅ Validation Outcome
-Successful validation confirms:
-
-Functional HPA
-
-Stable Metrics Server
-
-Elastic infrastructure behavior
-
-Enterprise-ready autoscaling
-
-🛠 Troubleshooting & Support
-Refer to documentation/TROUBLESHOOTING.md.
-
-Common checks:
-
-kubectl describe pod <pod> -n openedx
-kubectl logs <pod> -n openedx --previous
-kubectl get hpa -n openedx
-kubectl get deployment metrics-server -n kube-system
-👤 Contact
-Submitted by: Muhammad Adeel Munir
-Role: DevOps Engineer
-Email: adeel.zixer11@gmail.com
-
-📺 Architecture Overview Video
-A visual walkthrough of the OpenEdX + AWS EKS architecture:
-
-🔗 https://drive.google.com/file/d/1nfYCW3ljfHrNblmQhkmN2aozUnroZJfK/view?usp=sharing
