@@ -416,6 +416,3 @@ Stop the load generators.
 
 ---
 
-```
-
-```
