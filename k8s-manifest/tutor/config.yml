@@ -127,7 +127,7 @@ PLUGINS:
 PLUGIN_INDEXES:
 - https://overhang.io/tutor/main
 - https://overhang.io/tutor/contrib
-REDIS_HOST: redis
+REDIS_HOST: 10.0.5.90
 REDIS_PASSWORD: ''
 REDIS_PORT: 6379
 RUN_ELASTICSEARCH: false
