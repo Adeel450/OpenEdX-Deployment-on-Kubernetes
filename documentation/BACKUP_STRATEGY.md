@@ -104,8 +104,3 @@ kubectl delete pod mongodb-0
 
 ```
 
-```
-
-***
-
-```
