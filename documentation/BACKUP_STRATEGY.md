@@ -1,5 +1,4 @@
 
----
 
 ```markdown
 # 🛡️ Open edX Production Backup & Disaster Recovery Strategy
