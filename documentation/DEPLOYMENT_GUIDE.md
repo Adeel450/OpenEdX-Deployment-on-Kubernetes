@@ -1,9 +1,12 @@
 
-# OpenEdX Deployment Guide on AWS EKS
+---
 
-This guide provides a comprehensive, step-by-step walkthrough for deploying a production-ready OpenEdX platform on AWS Elastic Kubernetes Service (EKS).
+```markdown
+# Open edX Deployment Guide on AWS EKS
 
-The deployment architecture is designed for **High Availability (HA)**, **Security**, and **Scalability** using a custom VPC, private subnets for data/apps, and public subnets for load balancers.
+This guide provides a comprehensive, step-by-step walkthrough for deploying a production-ready Open edX platform on AWS Elastic Kubernetes Service (EKS).
+
+The deployment architecture is designed for **High Availability (HA)**, **Security**, and **Scalability** using a custom VPC, private subnets for data/apps, and public subnets for load balancers. 
 
 ---
 
@@ -12,9 +15,9 @@ The deployment architecture is designed for **High Availability (HA)**, **Securi
 * **VPC CIDR:** `10.0.0.0/16`
 * **Availability Zones:** 2 (`us-east-1a`, `us-east-1b`)
 * **Subnet Strategy:**
-    * **Public (Layer 1):** Load Balancers, NAT Gateways, Bastion Host.
+    * **Public (Layer 1):** Load Balancers, NAT Gateways.
     * **Private App (Layer 2):** EKS Worker Nodes (Application Logic).
-    * **Private Data (Layer 3):** Databases (RDS, Mongo, Redis, Elastic) - **No Internet Access**.
+    * **Private Data (Layer 3):** Databases (RDS, ElastiCache, EBS Volumes) - **No Internet Access**.
 
 ---
 
@@ -35,7 +38,6 @@ We utilize a custom VPC architecture with 6 subnets to ensure strict isolation b
 | **Private Data Subnet** | `private-data-subnet-2` | `10.0.6.0/24` | us-east-1b |
 
 ### 1.2 Option A: Setup via AWS Console (Manual)
-
 1.  **Create VPC:** Name it `openedx-vpc` with CIDR `10.0.0.0/16`.
 2.  **Create Subnets:** Create the 6 subnets listed above in their respective AZs.
 3.  **Internet Gateway (IGW):** Create `openedx-igw` and attach to VPC.
@@ -46,13 +48,9 @@ We utilize a custom VPC architecture with 6 subnets to ensure strict isolation b
     * **Private Data RT:** No internet routes (Local traffic only). Associate with both Private Data Subnets.
 
 ### 1.3 Option B: Setup via Terraform (Automated)
-
-Alternatively, provision the network using the provided Terraform script.
-
 * **Source Code:** `terraform/vpc/vpc.tf`
 
 **Deployment Command:**
-
 ```bash
 cd terraform/vpc
 terraform init
@@ -62,51 +60,24 @@ terraform apply -auto-approve
 
 ---
 
-## Step 2: External Database Layer Setup (RDS & Security)
+## Step 2: Relational Database Layer (AWS RDS)
 
 To ensure data persistence and security, we deploy MySQL on AWS RDS inside isolated private subnets.
 
 ### 2.1 Create Database Security Group
 
-Define firewall rules to allow traffic only from the Application Layer.
-
 * **Name:** `openedx-data-sg`
-* **VPC:** `openedx-vpc`
-* **Inbound Rules:** Allow `10.0.0.0/16` (VPC CIDR) on ports:
-* `3306` (MySQL)
-* `27017` (MongoDB)
-* `6379` (Redis)
-* `9200` (Elasticsearch)
+* **Inbound Rules:** Allow `10.0.0.0/16` (VPC CIDR) on ports: `3306` (MySQL), `6379` (Redis).
 
-
-
-### 2.2 Create DB Subnet Group
-
-Go to RDS > Subnet groups > Create DB subnet group.
-
-* **Name:** `openedx-db-subnet-group`
-* **Subnets:** Select ONLY the two Private Data Subnets (`10.0.5.0/24`, `10.0.6.0/24`).
-
-### 2.3 Provision MySQL Database (AWS RDS)
+### 2.2 Provision MySQL Database (AWS RDS)
 
 Go to RDS > Create database > Standard create > MySQL.
 
-* **Version:** MySQL 8.0.x.
-* **Settings:**
-* **Identifier:** `openedx-mysql`
-* **Master Username:** `admin` (Save your password!)
+* **Version:** MySQL 8.0.x
 * **Instance:** `db.t3.medium`
+* **Connectivity:** VPC: `openedx-vpc`, Subnet Group: Private Data Subnets, Public Access: NO.
 
-
-* **Connectivity:**
-* **VPC:** `openedx-vpc`
-* **Subnet Group:** `openedx-db-subnet-group`
-* **Public Access:** NO
-* **Security Group:** Select `openedx-data-sg`.
-
-
-
-### 2.4 Option B: Setup via Terraform
+### 2.3 Option B: Setup via Terraform
 
 * **Source Code:** `terraform/databases/mysql.tf`
 
@@ -121,34 +92,23 @@ terraform apply -auto-approve
 
 ---
 
-## Step 3: Compute Layer Setup (Utility & Bastion)
+## Step 3: Caching & Task Queue Layer (AWS ElastiCache Redis)
 
-We require two EC2 instances:
+Open edX heavily relies on Redis for caching and Celery task management. We use fully managed AWS ElastiCache for high availability.
 
-1. **Utility Server (Private):** Hosts NoSQL databases (Mongo, Redis, Elastic).
-2. **Bastion Host (Public):** Jump Server for secure access.
+### 3.1 Provision Redis Cluster (AWS Console)
 
-### 3.1 Launch Utility Server (Private)
+1. Go to **ElastiCache** > **Redis clusters** > **Create cluster**.
+2. **Cluster Mode:** Disabled (Standard for Open edX default config).
+3. **Node Type:** `cache.t3.medium`.
+4. **Subnet Group:** Select the Private Data Subnets (`10.0.5.0/24`, `10.0.6.0/24`).
+5. **Security Group:** Attach `openedx-data-sg` (allowing port `6379`).
 
-* **Name:** `openedx-data-utility`
-* **AMI:** Ubuntu 22.04 LTS
-* **Instance Type:** `t3.medium` (4GB RAM is required for Elasticsearch).
-* **Subnet:** `private-data-subnet-1` (Private).
-* **Public IP:** Disable.
-* **Security Group:** `openedx-utility-sg` (Allow traffic from `10.0.0.0/16`).
+### 3.2 Setup via Terraform (Automated)
 
-### 3.2 Launch Bastion Host (Public)
+All caching infrastructure is codified using Terraform for rapid deployment.
 
-* **Name:** `openedx-bastion`
-* **AMI:** Ubuntu 22.04 LTS
-* **Instance Type:** `t2.micro`
-* **Subnet:** `public-subnet-1` (Public).
-* **Public IP:** Enable.
-* **Security Group:** `openedx-bastion-sg` (Allow SSH from My IP).
-
-### 3.3 Option B: Setup via Terraform
-
-* **Source Code:** `terraform/databases/utility.tf`
+* **Source Code:** `terraform/databases/redis.tf`
 
 **Deployment Command:**
 
@@ -161,70 +121,30 @@ terraform apply -auto-approve
 
 ---
 
-## Step 4: NoSQL Database Setup (Docker)
+## Step 4: NoSQL Databases (Kubernetes StatefulSets)
 
-We install MongoDB, Redis, and Elasticsearch on the private Utility Server.
+Instead of using standalone EC2 instances, MongoDB and Elasticsearch are deployed natively within the EKS cluster utilizing **StatefulSets** and **Persistent Volume Claims (PVCs)** attached to AWS EBS `gp3` volumes.
 
-### 4.1 Secure Access via SSH Agent Forwarding
+### 4.1 Apply Storage Class & StatefulSets
 
-Since the Utility server has no Public IP, connect via the Bastion.
-
-**1. Load your key (Local Machine):**
+Navigate to the Kubernetes manifests directory to deploy the databases. These manifests include built-in Liveness and Readiness probes.
 
 ```bash
-ssh-add adeel-key.pem
+kubectl apply -f k8s/storage-class.yaml
+kubectl apply -f k8s/mongodb.yaml
+kubectl apply -f k8s/elasticsearch.yaml
 
 ```
 
-**2. Connect to Bastion:**
+### 4.2 Verify Data Persistence
 
 ```bash
-ssh -A ubuntu@<BASTION-PUBLIC-IP>
+kubectl get pods -n default
+kubectl get pvc -n default
 
 ```
 
-**3. Jump to Utility Server:**
-
-```bash
-ssh ubuntu@10.0.5.90  # Replace with Utility Server Private IP
-
-```
-
-### 4.2 Install Docker Engine
-
-Run on Utility Server (Ensure NAT Gateway is active):
-
-```bash
-sudo apt update
-sudo apt install -y docker.io docker-compose-v2
-sudo usermod -aG docker $USER
-
-```
-
-### 4.3 Configure System & Storage
-
-```bash
-# Create Persistent Directories
-sudo mkdir -p /openedx/data/{mongo,redis,elasticsearch}
-sudo chmod -R 777 /openedx/data
-
-# Increase Memory Map Limit for Elasticsearch
-sudo sysctl -w vm.max_map_count=262144
-echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
-
-```
-
-### 4.4 Deploy Databases
-
-Create a `docker-compose.yml` file using the content from `scripts/docker-compose.yml` in the repository.
-
-**Launch:**
-
-```bash
-sudo docker compose up -d
-sudo docker ps
-
-```
+*Ensure both `mongodb-0` and `elasticsearch-0` are in `Running` state and PVCs are `Bound`.*
 
 ---
 
@@ -254,61 +174,29 @@ terraform apply -auto-approve
 
 ---
 
-## Step 6: Deployment Station & Application Launch
+## Step 6: Application Launch (Tutor)
 
-Configure the Bastion Host to manage the cluster and launch OpenEdX using Tutor.
+Configure your local deployment station or CI/CD runner to manage the cluster and launch Open edX using Tutor.
 
-### 6.1 Install Tools on Bastion
-
-```bash
-# AWS CLI
-curl "[https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip](https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip)" -o "awscliv2.zip"
-unzip awscliv2.zip && sudo ./aws/install
-
-# Kubectl
-curl -LO "[https://dl.k8s.io/release/$(curl](https://dl.k8s.io/release/$(curl) -L -s [https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl](https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl)"
-chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-
-# Tutor
-sudo apt install -y python3-pip python3-venv
-python3 -m venv venv
-source venv/bin/activate
-pip install "tutor[full]"
-
-```
-
-### 6.2 Configure Access
+### 6.1 Connect to EKS Cluster
 
 ```bash
-# Configure AWS Credentials
 aws configure
-
-# Connect to Cluster
 aws eks update-kubeconfig --region us-east-1 --name openedx-cluster
 
 ```
 
-### 6.3 Configure OpenEdX (Tutor)
+### 6.2 Configure Open edX External Connections
 
-**Initialize Configuration:**
+Edit the Tutor `config.yml` to point to your managed AWS services (RDS and ElastiCache) and internal K8s StatefulSets.
 
 ```bash
-tutor config save --interactive
+tutor config save --set MYSQL_HOST="<rds-endpoint>.amazonaws.com"
+tutor config save --set REDIS_HOST="<elasticache-endpoint>.amazonaws.com"
 
 ```
 
-**External DB Configuration:**
-
-Edit `config.yml` to point to RDS and Utility Server IPs.
-
-```bash
-nano "$(tutor config printroot)/config.yml"
-
-```
-
-*(Append the external database configuration block referencing your RDS Endpoint and Utility Server IP).*
-
-### 6.4 Launch Deployment
+### 6.3 Launch Deployment
 
 ```bash
 tutor config save
@@ -320,23 +208,13 @@ tutor k8s launch
 
 ## Step 7: Post-Deployment Configuration (Monitoring & Ingress)
 
-Once the core platform is running, we enable the monitoring stack and finalize the Ingress configuration to expose the platform via an AWS Application Load Balancer (ALB).
-
 ### 7.1 Enable Monitoring (Prometheus & Grafana)
 
-We use the official Helm charts to deploy a lightweight monitoring stack specifically for the EKS cluster.
-
-**1. Add Helm Repositories:**
+We use the official Helm charts to deploy a lightweight monitoring stack.
 
 ```bash
 helm repo add prometheus-community [https://prometheus-community.github.io/helm-charts](https://prometheus-community.github.io/helm-charts)
 helm repo update
-
-```
-
-**2. Install Prometheus & Grafana Stack:**
-
-```bash
 helm install monitoring prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
@@ -344,74 +222,33 @@ helm install monitoring prometheus-community/kube-prometheus-stack \
 
 ```
 
-**3. Verify Installation:**
+### 7.2 CloudFront & Ingress Configuration
 
-```bash
-kubectl get pods -n monitoring
-
-```
-
-### 7.2 Finalize Ingress Controller (Public Access)
-
-By default, the Nginx Ingress Controller might not assign an external address immediately. We patch the service to ensure it provisions a public Load Balancer.
-
-**1. Patch Ingress Service:**
-
-```bash
-kubectl patch svc -n ingress-nginx ingress-nginx-controller \
-  -p '{"spec": {"type": "LoadBalancer"}}'
-
-```
-
-**2. Get Load Balancer URL:**
-
-```bash
-kubectl get svc -n ingress-nginx ingress-nginx-controller
-
-```
-
-*Copy the `EXTERNAL-IP` (e.g., `a4d...us-east-1.elb.amazonaws.com`). This is your LMS URL.*
+1. **Nginx Ingress:** Configured as a LoadBalancer.
+2. **AWS CloudFront:** Configured as a CDN bridging traffic to the EKS LoadBalancer, providing **AWS WAF (Web Application Firewall)** and SSL/TLS termination via AWS Certificate Manager (ACM).
 
 ---
 
 ## Step 8: Autoscaling Verification (HPA Stress Test)
 
-To ensure the platform meets **Hyperscale Readiness** criteria, we validate the Horizontal Pod Autoscaler (HPA) using synthetic load.
+To ensure the platform meets **Hyperscale Readiness** criteria, we validate the Horizontal Pod Autoscaler (HPA).
 
-### 8.1 Setup Load Generators
+### 8.1 Setup & Run Load Generator
 
-Ensure the load scripts are executable.
+This creates internal ephemeral pods to flood LMS and CMS services.
 
 ```bash
-chmod +x scripts/*.sh
+kubectl run -i --tty load-generator --rm --image=busybox:1.28 --restart=Never -n openedx -- /bin/sh -c "while sleep 0.01; do wget -q -O- http://lms:8000; done"
 
 ```
 
-### 8.2 Run Load Test
+### 8.2 Verify Scaling
 
-Execute the unified load script. This creates internal ephemeral pods to flood LMS and CMS services.
-
-```bash
-./scripts/generate_load.sh
-
-```
-
-### 8.3 Verify Scaling
-
-Watch the HPA status in a separate terminal. You should see replicas increase from 1 to 3 as CPU usage exceeds 50%.
+Watch the HPA status in a separate terminal. Replicas will dynamically scale up as CPU usage exceeds the 50% target.
 
 ```bash
 kubectl get hpa -n openedx -w
 
 ```
 
-### 8.4 Cleanup
-
-Stop the load generators.
-
-```bash
-./scripts/stop_load.sh
-
 ```
-
----
