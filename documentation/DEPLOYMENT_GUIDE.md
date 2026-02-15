@@ -1,23 +1,23 @@
 
 ---
 
-# 🚀 Open edX Deployment Guide on AWS EKS
+# Open edX Deployment Guide on AWS EKS
 
 This guide provides a **production-grade, step-by-step walkthrough** for deploying the Open edX platform on **Amazon Elastic Kubernetes Service**.
 
 The architecture is designed for:
 
 
-✅ High Availability
-✅ Security & Network Isolation
-✅ Scalablity & Performance
-✅ Production Reliability
+High Availability
+Security & Network Isolation
+Scalablity & Performance
+Production Reliability
 
 It uses a **custom VPC**, private subnets for applications and data, and public subnets for load balancing.
 
 ---
 
-## 📑 Table of Contents
+## Table of Contents
 
 * [Architecture Overview](#architecture-overview)
 * [1. Network Infrastructure (VPC)](#1-network-infrastructure-vpc)
@@ -31,7 +31,7 @@ It uses a **custom VPC**, private subnets for applications and data, and public 
 
 ---
 
-## 🏗 Architecture Overview
+## Architecture Overview
 
 ### Network Design
 
@@ -47,7 +47,7 @@ It uses a **custom VPC**, private subnets for applications and data, and public 
 
 ---
 
-## 1️⃣ Network Infrastructure (VPC)
+## Network Infrastructure (VPC)
 
 A custom VPC ensures strict separation between public access, application logic, and data storage.
 
@@ -105,7 +105,7 @@ terraform apply -auto-approve
 
 ---
 
-## 2️⃣ Relational Database Layer (RDS MySQL)
+## Relational Database Layer (RDS MySQL)
 
 To ensure persistence and security, MySQL runs inside private subnets using **Amazon RDS**.
 
@@ -128,7 +128,7 @@ Allow inbound from VPC CIDR:
 * Instance: `db.t3.medium`
 * VPC: openedx-vpc
 * Subnet Group: Private Data
-* Public Access: ❌ Disabled
+* Public Access:  Disabled
 
 ---
 
@@ -144,7 +144,7 @@ terraform apply -auto-approve
 
 ---
 
-## 3️⃣ Caching & Queue Layer (Redis)
+## Caching & Queue Layer (Redis)
 
 Open edX uses Redis for caching, sessions, and Celery queues.
 
@@ -171,7 +171,7 @@ terraform apply -auto-approve
 
 ---
 
-## 4️⃣ NoSQL Databases (StatefulSets)
+## NoSQL Databases (StatefulSets)
 
 MongoDB and Elasticsearch run **inside Kubernetes** using StatefulSets and persistent storage.
 
@@ -214,7 +214,7 @@ Ensure:
 
 ---
 
-## 5️⃣ Kubernetes Cluster Setup (EKS)
+## Kubernetes Cluster Setup (EKS)
 
 Deploy the control plane and worker nodes using **Amazon Web Services** managed Kubernetes.
 
@@ -240,7 +240,7 @@ terraform apply -auto-approve
 
 ---
 
-## 6️⃣ Application Deployment (Tutor)
+## Application Deployment (Tutor)
 
 ### Connect to Cluster
 
@@ -269,7 +269,7 @@ tutor k8s launch
 
 ---
 
-## 7️⃣ Monitoring & Ingress
+## Monitoring & Ingress
 
 ### 7.1 Monitoring Stack (Prometheus + Grafana)
 
@@ -300,7 +300,7 @@ Components:
 
 ---
 
-## 8️⃣ Autoscaling Verification
+## Autoscaling Verification
 
 Validate Horizontal Pod Autoscaler (HPA) behavior.
 
@@ -325,7 +325,7 @@ Pods will scale automatically when CPU exceeds threshold.
 
 ---
 
-## ✅ Deployment Complete
+## Deployment Complete
 
 Your Open edX platform is now:
 
