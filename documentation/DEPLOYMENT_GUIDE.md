@@ -1,7 +1,3 @@
-Below is your **professionally formatted, GitHub-ready version**.
-Structure, clarity, and wording are improved while keeping your technical content intact.
-
-You can **copy → paste directly into README.md**.
 
 ---
 
