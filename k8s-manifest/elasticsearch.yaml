@@ -34,6 +34,27 @@ spec:
           value: "-Xms512m -Xmx512m"
         ports:
         - containerPort: 9200
+
+        # --- Readiness & Liveness Probes Added Here ---
+        livenessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 40
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        # ----------------------------------------------
+
         volumeMounts:
         - name: elastic-data
           mountPath: /usr/share/elasticsearch/data
@@ -46,3 +67,4 @@ spec:
       resources:
         requests:
           storage: 20Gi
+ubuntu@ip-172-31-31-179:~
