@@ -3,7 +3,6 @@ CMS_OAUTH2_SECRET: IyGFgxP9y4YaP43JLtV1IlH8
 CONTACT_EMAIL: contact@lms.biolnks.io
 ELASTICSEARCH_HOST: elasticsearch.default.svc.cluster.local
 ELASTICSEARCH_PORT: 9200
-ENABLE_HTTPS: false
 ENABLE_WEB_PROXY: false
 ID: qCk7AcegGnvNITs9udpJxsnS
 JWT_RSA_PRIVATE_KEY: '-----BEGIN RSA PRIVATE KEY-----
